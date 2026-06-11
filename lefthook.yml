@@ -1,0 +1,20 @@
+# Git hooks for rampkit, managed by lefthook (installed via `bun install`'s
+# prepare script). Kept intentionally lean so commits stay fast:
+#   pre-commit — format staged files in place, then typecheck the workspace.
+#   pre-push   — run the unit suites.
+# Bypass in a pinch with `git commit/push --no-verify`.
+
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: "*.{ts,tsx,js,jsx,json,md}"
+      run: bunx prettier --write {staged_files}
+      stage_fixed: true
+    typecheck:
+      run: bun run typecheck
+
+pre-push:
+  commands:
+    test:
+      run: bun test

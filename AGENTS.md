@@ -53,6 +53,6 @@ bun run dev        # run the app from source (TUI)
 
 ## Provenance
 
-The ramp-generation *approach* is inspired by tints.dev (CC BY-NC 4.0). Only the
+The ramp-generation _approach_ is inspired by tints.dev (CC BY-NC 4.0). Only the
 general technique is shared — algorithms and ideas are not copyrightable, but its
 code must not be reused here.

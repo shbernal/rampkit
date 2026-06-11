@@ -13,7 +13,7 @@ focus between them.
 ### Input pane
 
 - **↑/↓** — cycle the input notation (`hex` / `oklch` / `rgb` / `hsl`),
-  re-expressing the *same* color in each.
+  re-expressing the _same_ color in each.
 - **Tab** — cycle the value field(s) → the token name field → back.
 - The scale lists each stop's value (in the input notation) beside its swatch;
   the anchor stop (your exact input) is marked with `*`.
@@ -26,13 +26,13 @@ focus between them.
 
 ## Keys
 
-| Key | Action |
-| --- | --- |
-| **Shift+Tab** | Switch focus between input / output pane |
-| **↑/↓** | Cycle input notation (input pane) / output syntax (output pane) |
-| **Tab** | Cycle fields (input pane) / output format (output pane) |
-| **Enter** | Copy the output to the clipboard |
-| **Esc** / **Ctrl-C** | Quit |
+| Key                  | Action                                                          |
+| -------------------- | --------------------------------------------------------------- |
+| **Shift+Tab**        | Switch focus between input / output pane                        |
+| **↑/↓**              | Cycle input notation (input pane) / output syntax (output pane) |
+| **Tab**              | Cycle fields (input pane) / output format (output pane)         |
+| **Enter**            | Copy the output to the clipboard                                |
+| **Esc** / **Ctrl-C** | Quit                                                            |
 
 ## Notes
 

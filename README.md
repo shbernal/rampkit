@@ -8,9 +8,9 @@ output formats, not just a Tailwind config object.
 
 rampkit ships three ways to use it from one repo:
 
-| Package | Install | Use |
-| --- | --- | --- |
-| **Library** — [`@shbernal/rampkit`](./packages/core) | `bun add @shbernal/rampkit` | `import { ramp, format }` in your code |
+| Package                                                   | Install                            | Use                                               |
+| --------------------------------------------------------- | ---------------------------------- | ------------------------------------------------- |
+| **Library** — [`@shbernal/rampkit`](./packages/core)      | `bun add @shbernal/rampkit`        | `import { ramp, format }` in your code            |
 | **CLI + TUI** — [`@shbernal/rampkit-cli`](./packages/app) | `bun add -g @shbernal/rampkit-cli` | `rampkit '#451dc7'` (CLI) or bare `rampkit` (TUI) |
 
 ## Quick start
@@ -18,8 +18,8 @@ rampkit ships three ways to use it from one repo:
 ```ts
 import { ramp, format } from "@shbernal/rampkit";
 
-const scale = ramp("#451dc7");   // { 50: "...", ..., 950: "..." }
-format(scale, "tailwind-v4");    // @theme custom properties
+const scale = ramp("#451dc7"); // { 50: "...", ..., 950: "..." }
+format(scale, "tailwind-v4"); // @theme custom properties
 ```
 
 ```bash
@@ -46,7 +46,7 @@ under a permissive (MIT) license.
 
 ## Credit / provenance
 
-The ramp-generation *approach* is inspired by
+The ramp-generation _approach_ is inspired by
 [tints.dev](https://tints.dev) by Simeon Griggs (3-anchor lightness distribution
 in a perceptual color space, per-stop hue/saturation tweaks, and preserving the
 input color at its anchor stop). tints.dev is licensed CC BY-NC 4.0.

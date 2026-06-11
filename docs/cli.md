@@ -19,13 +19,13 @@ rampkit --help
 
 ## Flags
 
-| Flag | Description |
-| --- | --- |
+| Flag           | Description                                                                       |
+| -------------- | --------------------------------------------------------------------------------- |
 | `-f, --format` | Output format: `tailwind-v4`, `css-vars`, `tailwind-config`, `json`, `hex-array`. |
-| `-n, --name` | Token name used in the emitted output. |
-| `--color` | Value syntax for each stop: `hex`, `rgb`, `hsl`, `oklch`. |
-| `--preview` | Print color swatches (to **stderr**). |
-| `--help` | Show usage. |
+| `-n, --name`   | Token name used in the emitted output.                                            |
+| `--color`      | Value syntax for each stop: `hex`, `rgb`, `hsl`, `oklch`.                         |
+| `--preview`    | Print color swatches (to **stderr**).                                             |
+| `--help`       | Show usage.                                                                       |
 
 ## stdout / stderr contract
 

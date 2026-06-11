@@ -1,13 +1,6 @@
 import { test, expect } from "bun:test";
 import { rgb } from "culori";
-import {
-  buildColor,
-  clampText,
-  toComps,
-  COMP_RANGES,
-  INPUT_FORMATS,
-  COMP_LABELS,
-} from "./color-input";
+import { buildColor, clampText, toComps, COMP_RANGES, INPUT_FORMATS, COMP_LABELS } from "./color-input";
 
 // buildColor — assembling + clamping the value handed to the engine.
 

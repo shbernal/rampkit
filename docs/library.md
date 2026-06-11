@@ -23,13 +23,13 @@ hex, `rgb()`, `hsl()`, `oklch()`, named colors, and more.
 
 ### Options
 
-| Option | Purpose |
-| --- | --- |
-| `anchor` | Force which stop the input color is pinned to (otherwise chosen from its lightness). |
-| `chroma` | Scale the chroma curve across the ramp. |
-| `hueShift` | Shift hue toward the light/dark ends (cool/warm drift). |
-| `lMin` / `lMax` | Clamp the lightest/darkest stop's lightness. |
-| `colorSpace` | Syntax each stop is emitted in: `hex` (default), `rgb`, `hsl`, or `oklch`. |
+| Option          | Purpose                                                                              |
+| --------------- | ------------------------------------------------------------------------------------ |
+| `anchor`        | Force which stop the input color is pinned to (otherwise chosen from its lightness). |
+| `chroma`        | Scale the chroma curve across the ramp.                                              |
+| `hueShift`      | Shift hue toward the light/dark ends (cool/warm drift).                              |
+| `lMin` / `lMax` | Clamp the lightest/darkest stop's lightness.                                         |
+| `colorSpace`    | Syntax each stop is emitted in: `hex` (default), `rgb`, `hsl`, or `oklch`.           |
 
 ## `format(scale, format, options?)`
 
@@ -39,11 +39,11 @@ Render a scale into an output format:
 import { ramp, format } from "@shbernal/rampkit";
 
 const scale = ramp("#451dc7");
-format(scale, "tailwind-v4");      // @theme custom properties
-format(scale, "css-vars");         // :root custom properties
-format(scale, "tailwind-config");  // { color: { 50: "...", ... } }
-format(scale, "json");             // flat stop→hex map
-format(scale, "hex-array");        // ["#...", ...] lightest→darkest
+format(scale, "tailwind-v4"); // @theme custom properties
+format(scale, "css-vars"); // :root custom properties
+format(scale, "tailwind-config"); // { color: { 50: "...", ... } }
+format(scale, "json"); // flat stop→hex map
+format(scale, "hex-array"); // ["#...", ...] lightest→darkest
 ```
 
 Pass `{ name }` in options to set the token name used in the emitted output

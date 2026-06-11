@@ -145,7 +145,8 @@ function App({ initial }: { initial: string }) {
 
   // Re-express the current color in the next/previous input notation.
   const cycleInputFormat = (dir: 1 | -1) => {
-    const next = INPUT_FORMATS[(INPUT_FORMATS.indexOf(inputFormat) + dir + INPUT_FORMATS.length) % INPUT_FORMATS.length]!;
+    const next =
+      INPUT_FORMATS[(INPUT_FORMATS.indexOf(inputFormat) + dir + INPUT_FORMATS.length) % INPUT_FORMATS.length]!;
     if (next === "hex") setHexValue(colorStr ? (formatHex(colorStr) ?? "") : "");
     else setComps(colorStr ? toComps(colorStr, next) : ["", "", ""]);
     setInputFormat(next);
@@ -153,20 +154,14 @@ function App({ initial }: { initial: string }) {
   };
 
   const cycleColorSpace = (dir: 1 | -1) =>
-    setOutSpace(
-      (s) => COLOR_SPACES[(COLOR_SPACES.indexOf(s) + dir + COLOR_SPACES.length) % COLOR_SPACES.length]!,
-    );
+    setOutSpace((s) => COLOR_SPACES[(COLOR_SPACES.indexOf(s) + dir + COLOR_SPACES.length) % COLOR_SPACES.length]!);
 
   // Snap a component field into its valid range when focus leaves it.
   const commitComp = (idx: number) => {
     if (inputFormat === "hex" || idx >= 3) return;
     setComps(
       (prev) =>
-        prev.map((p, j) => (j === idx ? clampText(p, COMP_RANGES[inputFormat][idx]!) : p)) as [
-          string,
-          string,
-          string,
-        ],
+        prev.map((p, j) => (j === idx ? clampText(p, COMP_RANGES[inputFormat][idx]!) : p)) as [string, string, string],
     );
   };
 
@@ -218,16 +213,11 @@ function App({ initial }: { initial: string }) {
       </Box>
 
       {/* Input pane */}
-      <Box
-        flexDirection="column"
-        borderStyle="round"
-        borderColor={inputActive ? "cyan" : "gray"}
-        paddingX={1}
-      >
+      <Box flexDirection="column" borderStyle="round" borderColor={inputActive ? "cyan" : "gray"} paddingX={1}>
         <Box>
           <Text dimColor>input </Text>
           <Text color="cyan">{inputFormat}</Text>
-          <Text dimColor> ↑↓   </Text>
+          <Text dimColor> ↑↓ </Text>
           {inputFormat === "hex" ? (
             <TextInput
               value={hexValue}
@@ -289,12 +279,7 @@ function App({ initial }: { initial: string }) {
       </Box>
 
       {/* Output pane */}
-      <Box
-        flexDirection="column"
-        borderStyle="round"
-        borderColor={!inputActive ? "cyan" : "gray"}
-        paddingX={1}
-      >
+      <Box flexDirection="column" borderStyle="round" borderColor={!inputActive ? "cyan" : "gray"} paddingX={1}>
         <Box>
           <Text dimColor>output </Text>
           <Text color="cyan">{outFormat}</Text>

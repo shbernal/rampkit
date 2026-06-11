@@ -10,12 +10,12 @@ bun add @shbernal/rampkit   # or: npm i @shbernal/rampkit
 ```ts
 import { ramp, format } from "@shbernal/rampkit";
 
-const scale = ramp("#451dc7");        // { 50: "...", ..., 950: "..." }
-format(scale, "tailwind-v4");         // @theme custom properties
-format(scale, "css-vars");            // :root custom properties
-format(scale, "tailwind-config");     // { color: { 50: "...", ... } }
-format(scale, "json");                // flat stop→hex map
-format(scale, "hex-array");           // ["#...", ...] lightest→darkest
+const scale = ramp("#451dc7"); // { 50: "...", ..., 950: "..." }
+format(scale, "tailwind-v4"); // @theme custom properties
+format(scale, "css-vars"); // :root custom properties
+format(scale, "tailwind-config"); // { color: { 50: "...", ... } }
+format(scale, "json"); // flat stop→hex map
+format(scale, "hex-array"); // ["#...", ...] lightest→darkest
 ```
 
 `ramp(input, options)` accepts any CSS color string culori understands. Options:

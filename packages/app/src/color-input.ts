@@ -24,10 +24,26 @@ export interface Range {
   wrap?: boolean;
 }
 export const COMP_RANGES: Record<InputFormat, [Range, Range, Range]> = {
-  hex: [{ min: 0, max: 0 }, { min: 0, max: 0 }, { min: 0, max: 0 }],
-  oklch: [{ min: 0, max: 1 }, { min: 0, max: 0.4 }, { min: 0, max: 360, wrap: true }],
-  rgb: [{ min: 0, max: 255 }, { min: 0, max: 255 }, { min: 0, max: 255 }],
-  hsl: [{ min: 0, max: 360, wrap: true }, { min: 0, max: 100 }, { min: 0, max: 100 }],
+  hex: [
+    { min: 0, max: 0 },
+    { min: 0, max: 0 },
+    { min: 0, max: 0 },
+  ],
+  oklch: [
+    { min: 0, max: 1 },
+    { min: 0, max: 0.4 },
+    { min: 0, max: 360, wrap: true },
+  ],
+  rgb: [
+    { min: 0, max: 255 },
+    { min: 0, max: 255 },
+    { min: 0, max: 255 },
+  ],
+  hsl: [
+    { min: 0, max: 360, wrap: true },
+    { min: 0, max: 100 },
+    { min: 0, max: 100 },
+  ],
 };
 
 const round = (n: number, digits: number): string => String(Number(n.toPrecision(digits)));
