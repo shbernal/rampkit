@@ -1,0 +1,57 @@
+{
+  "name": "@shbernal/rampkit",
+  "version": "0.0.0",
+  "description": "Generate Tailwind-style color ramps (50–950) from a single color, with multi-format output. Clean-room, OSS.",
+  "type": "module",
+  "license": "MIT",
+  "author": "shbernal <shbernal.01@gmail.com>",
+  "keywords": [
+    "tailwind",
+    "tailwindcss",
+    "color",
+    "palette",
+    "ramp",
+    "shades",
+    "tints",
+    "oklch",
+    "hsluv",
+    "design-tokens"
+  ],
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "vitest",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shbernal/rampkit.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
