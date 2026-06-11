@@ -35,14 +35,48 @@ const COMP_LABELS: Record<InputFormat, [string, string, string]> = {
   hsl: ["H", "S", "L"],
 };
 
+// Valid range per component. Hue ranges `wrap` (mod max) rather than clamp.
+interface Range {
+  min: number;
+  max: number;
+  wrap?: boolean;
+}
+const COMP_RANGES: Record<InputFormat, [Range, Range, Range]> = {
+  hex: [{ min: 0, max: 0 }, { min: 0, max: 0 }, { min: 0, max: 0 }],
+  oklch: [{ min: 0, max: 1 }, { min: 0, max: 0.4 }, { min: 0, max: 360, wrap: true }],
+  rgb: [{ min: 0, max: 255 }, { min: 0, max: 255 }, { min: 0, max: 255 }],
+  hsl: [{ min: 0, max: 360, wrap: true }, { min: 0, max: 100 }, { min: 0, max: 100 }],
+};
+
 const round = (n: number, digits: number): string => String(Number(n.toPrecision(digits)));
 
-/** Assemble a CSS color string from the active input notation's field values.
- *  Returns "" when a component is missing so callers can treat it as incomplete. */
+/** Bring a number into a component's range; hue wraps, everything else clamps. */
+const clampNum = (n: number, r: Range): number =>
+  r.wrap ? ((n % r.max) + r.max) % r.max : Math.min(r.max, Math.max(r.min, n));
+
+/** Clamp a field's text on commit, preserving the user's exact text when it's
+ *  already valid (so decimals like "0.50" aren't reformatted mid-edit). */
+function clampText(raw: string, r: Range): string {
+  const n = Number(raw);
+  if (raw.trim() === "" || !Number.isFinite(n)) return raw;
+  const v = clampNum(n, r);
+  return v === n ? raw : String(Number(v.toFixed(4)));
+}
+
+/** Assemble a CSS color string from the active input notation's field values,
+ *  clamping each component so the engine never receives out-of-range values.
+ *  Returns "" when a component is missing or non-numeric (treated as incomplete). */
 function buildColor(fmt: InputFormat, hex: string, comps: [string, string, string]): string {
   if (fmt === "hex") return hex.trim();
-  const [a, b, c] = comps.map((s) => s.trim());
-  if (!a || !b || !c) return "";
+  const ranges = COMP_RANGES[fmt];
+  const vals: number[] = [];
+  for (let i = 0; i < 3; i++) {
+    const raw = comps[i]!.trim();
+    const n = Number(raw);
+    if (raw === "" || !Number.isFinite(n)) return "";
+    vals.push(clampNum(n, ranges[i]!));
+  }
+  const [a, b, c] = vals;
   if (fmt === "oklch") return `oklch(${a} ${b} ${c})`;
   if (fmt === "rgb") return `rgb(${a} ${b} ${c})`;
   return `hsl(${a} ${b}% ${c}%)`;
@@ -190,6 +224,19 @@ function App({ initial }: { initial: string }) {
       (s) => COLOR_SPACES[(COLOR_SPACES.indexOf(s) + dir + COLOR_SPACES.length) % COLOR_SPACES.length]!,
     );
 
+  // Snap a component field into its valid range when focus leaves it.
+  const commitComp = (idx: number) => {
+    if (inputFormat === "hex" || idx >= 3) return;
+    setComps(
+      (prev) =>
+        prev.map((p, j) => (j === idx ? clampText(p, COMP_RANGES[inputFormat][idx]!) : p)) as [
+          string,
+          string,
+          string,
+        ],
+    );
+  };
+
   useInput((_input, key) => {
     if (key.escape) return exit();
     if (key.return) {
@@ -200,11 +247,16 @@ function App({ initial }: { initial: string }) {
         );
       return;
     }
-    if (key.tab && key.shift) return setPane((p) => (p === "input" ? "output" : "input"));
+    if (key.tab && key.shift) {
+      if (pane === "input") commitComp(fieldIndex);
+      return setPane((p) => (p === "input" ? "output" : "input"));
+    }
 
     if (pane === "input") {
-      if (key.tab) setFieldIndex((i) => (i + 1) % fieldCount);
-      else if (key.upArrow) cycleInputFormat(-1);
+      if (key.tab) {
+        commitComp(fieldIndex);
+        setFieldIndex((i) => (i + 1) % fieldCount);
+      } else if (key.upArrow) cycleInputFormat(-1);
       else if (key.downArrow) cycleInputFormat(1);
     } else {
       if (key.tab) setOutFmtIndex((i) => (i + 1) % FORMATS.length);
