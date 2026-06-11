@@ -4,12 +4,37 @@ Generate Tailwind-style color ramps (`50`–`950`) from a single input color —
 exact input is preserved at its natural stop — and emit the result in several
 output formats, not just a Tailwind config object.
 
+![rampkit TUI demo](./demo.gif)
+
 rampkit ships three ways to use it from one repo:
 
 | Package | Install | Use |
 | --- | --- | --- |
 | **Library** — [`@shbernal/rampkit`](./packages/core) | `bun add @shbernal/rampkit` | `import { ramp, format }` in your code |
 | **CLI + TUI** — [`@shbernal/rampkit-cli`](./packages/app) | `bun add -g @shbernal/rampkit-cli` | `rampkit '#451dc7'` (CLI) or bare `rampkit` (TUI) |
+
+## Quick start
+
+```ts
+import { ramp, format } from "@shbernal/rampkit";
+
+const scale = ramp("#451dc7");   // { 50: "...", ..., 950: "..." }
+format(scale, "tailwind-v4");    // @theme custom properties
+```
+
+```bash
+rampkit '#451dc7'                # tailwind-v4 @theme (default)
+rampkit                          # no args → interactive TUI
+```
+
+## Documentation
+
+Full docs live in [`docs/`](./docs):
+
+- [Library API](./docs/library.md) — `ramp()`, `format()`, options, the ansi helper.
+- [CLI reference](./docs/cli.md) — flags, formats, stdin/stdout piping.
+- [TUI guide](./docs/tui.md) — interactive panes and key bindings.
+- [Development](./docs/development.md) — monorepo layout, build/test, regenerating the demo.
 
 ## Why
 
@@ -18,62 +43,6 @@ one input format, emit only a Tailwind config object, are unmaintained, or aren'
 open source. `rampkit` aims to be: maintained, TypeScript, Tailwind v4-aware, an
 installable npm package, broad input encodings, and **multi-format output** — all
 under a permissive (MIT) license.
-
-## Library
-
-```ts
-import { ramp, format } from "@shbernal/rampkit";
-
-const scale = ramp("#451dc7");            // { 50: "...", ..., 950: "..." }
-format(scale, "tailwind-v4");             // @theme custom properties
-format(scale, "css-vars");                // :root custom properties
-format(scale, "tailwind-config");         // { color: { 50: "...", ... } }
-format(scale, "json");                    // flat stop→hex map
-format(scale, "hex-array");               // ["#...", ...] lightest→darkest
-```
-
-`ramp(input, options)` accepts any CSS color string culori understands (hex,
-`rgb()`, `hsl()`, `oklch()`, named colors, …). Options: `anchor`, `chroma`,
-`hueShift`, `lMin`, `lMax`, and `colorSpace` (`hex`/`rgb`/`hsl`/`oklch`) to
-choose the syntax each stop is emitted in. A terminal preview helper is
-available at the `@shbernal/rampkit/ansi` subpath.
-
-## CLI
-
-```bash
-rampkit '#451dc7'                          # tailwind-v4 @theme (default)
-rampkit rebeccapurple -f css-vars -n brand # other format + token name
-rampkit '#0ea5e9' --color oklch -f css-vars # emit oklch() values
-rampkit '#0ea5e9' -f json --preview        # JSON to stdout, swatches to stderr
-echo '#0ea5e9' | rampkit -f hex-array      # read color from stdin
-rampkit --help
-```
-
-`--color` picks the value syntax (`hex`/`rgb`/`hsl`/`oklch`). Output goes to
-stdout (clean for piping); `--preview` swatches go to stderr.
-
-## TUI
-
-Run `rampkit` with no arguments in an interactive terminal to launch the TUI.
-It splits into an **input** pane and an **output** pane (**Shift+Tab** to switch
-focus): **↑/↓** cycle the input notation / output color syntax, **Tab** cycles
-fields / output formats, **Enter** copies, **Esc**/**Ctrl-C** quits. Swatches
-are painted in 24-bit sRGB (a faithful preview — terminals can't render `oklch()`
-or wide gamuts); the emitted text values are the source of truth.
-
-## Development
-
-This is a [bun](https://bun.sh) workspace monorepo (`packages/core`, `packages/app`).
-
-```bash
-bun install
-bun run build      # tsc build for the lib, bundled bin for the app
-bun test           # core test suite
-bun run typecheck  # tsc --noEmit across packages
-bun run dev        # run the app from source (TUI)
-```
-
-The library is **ESM-only**.
 
 ## Credit / provenance
 
