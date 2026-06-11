@@ -1,18 +1,67 @@
-// Interactive TUI (Ink). Type a color, watch the ramp redraw live, set the
-// token name, Tab between the color/name fields, Shift+Tab through output
-// formats, Enter to copy the output to the clipboard, Escape/Ctrl-C to quit.
-// Swatches are drawn with Ink's own
-// backgroundColor; label contrast reuses core's readableText.
+// Interactive TUI (Ink). Two focusable panes — Shift+Tab switches between them.
+//
+//   Input pane:  ↑/↓ cycle the input notation (hex/oklch/rgb/hsl, re-expressing
+//                the same color); Tab cycles the value field(s) → name → back.
+//                The scale lists each stop's value (in the input notation) to the
+//                right of its swatch; the anchor stop is marked with `*`.
+//   Output pane: ↑/↓ cycle the output color syntax; Tab cycles the output format.
+//
+//   Enter copies the output; Escape/Ctrl-C quits. Swatch backgrounds are always
+//   hex (Ink can't paint oklch()/hsl()); label contrast reuses core's readableText.
 
 import { useState, useMemo, useEffect } from "react";
 import { spawn } from "node:child_process";
 import { render, Box, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
+import { oklch, rgb, hsl, formatHex } from "culori";
 import { ramp, format, STOPS } from "@shbernal/rampkit";
-import type { Format, Ramp } from "@shbernal/rampkit";
+import type { Format, Ramp, ColorSpace } from "@shbernal/rampkit";
 import { readableText } from "@shbernal/rampkit/ansi";
 
 const FORMATS: Format[] = ["tailwind-v4", "css-vars", "tailwind-config", "json", "hex-array"];
+const COLOR_SPACES: ColorSpace[] = ["hex", "rgb", "hsl", "oklch"];
+
+// Input notations the color can be entered in. `hex` is a single free-text field
+// (and accepts any CSS color string); the rest are three numeric components.
+type InputFormat = "hex" | "oklch" | "rgb" | "hsl";
+const INPUT_FORMATS: InputFormat[] = ["hex", "oklch", "rgb", "hsl"];
+const COMP_LABELS: Record<InputFormat, [string, string, string]> = {
+  hex: ["", "", ""],
+  oklch: ["L", "C", "H"],
+  rgb: ["R", "G", "B"],
+  hsl: ["H", "S", "L"],
+};
+
+const round = (n: number, digits: number): string => String(Number(n.toPrecision(digits)));
+
+/** Assemble a CSS color string from the active input notation's field values.
+ *  Returns "" when a component is missing so callers can treat it as incomplete. */
+function buildColor(fmt: InputFormat, hex: string, comps: [string, string, string]): string {
+  if (fmt === "hex") return hex.trim();
+  const [a, b, c] = comps.map((s) => s.trim());
+  if (!a || !b || !c) return "";
+  if (fmt === "oklch") return `oklch(${a} ${b} ${c})`;
+  if (fmt === "rgb") return `rgb(${a} ${b} ${c})`;
+  return `hsl(${a} ${b}% ${c}%)`;
+}
+
+/** Re-express a color string as the three component fields of a target notation. */
+function toComps(color: string, fmt: InputFormat): [string, string, string] {
+  if (fmt === "oklch") {
+    const c = oklch(color);
+    return c ? [round(c.l, 4), round(c.c, 4), round(c.h ?? 0, 4)] : ["", "", ""];
+  }
+  if (fmt === "rgb") {
+    const c = rgb(color);
+    return c
+      ? [String(Math.round(c.r * 255)), String(Math.round(c.g * 255)), String(Math.round(c.b * 255))]
+      : ["", "", ""];
+  }
+  const c = hsl(color);
+  return c
+    ? [String(Math.round(c.h ?? 0)), String(Math.round(c.s * 100)), String(Math.round(c.l * 100))]
+    : ["", "", ""];
+}
 
 // Copy via OSC 52: a terminal escape that asks the *terminal emulator* to set
 // the clipboard. Unlike wl-copy/xclip (which run wherever the process runs),
@@ -80,36 +129,85 @@ function copyToClipboard(text: string): Promise<void> {
   });
 }
 
-function safeRamp(input: string): { scale?: Ramp; error?: string } {
-  if (!input.trim()) return {};
-  try {
-    return { scale: ramp(input.trim()) };
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) };
-  }
+interface View {
+  hexScale?: Ramp; // swatch backgrounds (always hex)
+  labelScale?: Ramp; // values shown beside swatches, in the input notation
+  outScale?: Ramp; // values for the output pane, in the output syntax
+  anchorHex?: string; // the input color, used to mark the anchor stop
+  error?: string;
 }
 
 function App({ initial }: { initial: string }) {
   const { exit } = useApp();
-  const [value, setValue] = useState(initial);
+
+  // Input pane state.
+  const [inputFormat, setInputFormat] = useState<InputFormat>("hex");
+  const [hexValue, setHexValue] = useState(initial);
+  const [comps, setComps] = useState<[string, string, string]>(["", "", ""]);
   const [name, setName] = useState("");
-  const [focusField, setFocusField] = useState<"color" | "name">("color");
-  const [formatIndex, setFormatIndex] = useState(0);
+  const [fieldIndex, setFieldIndex] = useState(0);
+
+  // Output pane state.
+  const [outFmtIndex, setOutFmtIndex] = useState(0);
+  const [outSpace, setOutSpace] = useState<ColorSpace>("hex");
+
+  const [pane, setPane] = useState<"input" | "output">("input");
   const [status, setStatus] = useState("");
 
-  const target = FORMATS[formatIndex]!;
-  const { scale, error } = useMemo(() => safeRamp(value), [value]);
-  const output = scale ? format(scale, target, { name: name.trim() || undefined }) : "";
+  const valueFieldCount = inputFormat === "hex" ? 1 : 3;
+  const fieldCount = valueFieldCount + 1; // value field(s) + name
+  const colorStr = buildColor(inputFormat, hexValue, comps);
+  const outFormat = FORMATS[outFmtIndex]!;
 
-  useInput((input, key) => {
-    if (key.escape) exit();
-    else if (key.return && output) {
-      copyToClipboard(output).then(
-        () => setStatus("✓ copied to clipboard"),
-        (err) => setStatus(`⚠ copy failed: ${err instanceof Error ? err.message : String(err)}`),
-      );
-    } else if (key.tab && key.shift) setFormatIndex((i) => (i + 1) % FORMATS.length);
-    else if (key.tab) setFocusField((f) => (f === "color" ? "name" : "color"));
+  const view = useMemo<View>(() => {
+    if (!colorStr) return {};
+    try {
+      const hexScale = ramp(colorStr);
+      const labelScale = inputFormat === "hex" ? hexScale : ramp(colorStr, { colorSpace: inputFormat });
+      const outScale = outSpace === "hex" ? hexScale : ramp(colorStr, { colorSpace: outSpace });
+      return { hexScale, labelScale, outScale, anchorHex: formatHex(colorStr) };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) };
+    }
+  }, [colorStr, inputFormat, outSpace]);
+
+  const output = view.outScale ? format(view.outScale, outFormat, { name: name.trim() || undefined }) : "";
+
+  // Re-express the current color in the next/previous input notation.
+  const cycleInputFormat = (dir: 1 | -1) => {
+    const next = INPUT_FORMATS[(INPUT_FORMATS.indexOf(inputFormat) + dir + INPUT_FORMATS.length) % INPUT_FORMATS.length]!;
+    if (next === "hex") setHexValue(colorStr ? (formatHex(colorStr) ?? "") : "");
+    else setComps(colorStr ? toComps(colorStr, next) : ["", "", ""]);
+    setInputFormat(next);
+    setFieldIndex(0);
+  };
+
+  const cycleColorSpace = (dir: 1 | -1) =>
+    setOutSpace(
+      (s) => COLOR_SPACES[(COLOR_SPACES.indexOf(s) + dir + COLOR_SPACES.length) % COLOR_SPACES.length]!,
+    );
+
+  useInput((_input, key) => {
+    if (key.escape) return exit();
+    if (key.return) {
+      if (output)
+        copyToClipboard(output).then(
+          () => setStatus("✓ copied to clipboard"),
+          (err) => setStatus(`⚠ copy failed: ${err instanceof Error ? err.message : String(err)}`),
+        );
+      return;
+    }
+    if (key.tab && key.shift) return setPane((p) => (p === "input" ? "output" : "input"));
+
+    if (pane === "input") {
+      if (key.tab) setFieldIndex((i) => (i + 1) % fieldCount);
+      else if (key.upArrow) cycleInputFormat(-1);
+      else if (key.downArrow) cycleInputFormat(1);
+    } else {
+      if (key.tab) setOutFmtIndex((i) => (i + 1) % FORMATS.length);
+      else if (key.upArrow) cycleColorSpace(-1);
+      else if (key.downArrow) cycleColorSpace(1);
+    }
   });
 
   // Clear the transient copy status after a moment.
@@ -119,56 +217,110 @@ function App({ initial }: { initial: string }) {
     return () => clearTimeout(timer);
   }, [status]);
 
+  const setComp = (i: number) => (v: string) =>
+    setComps((prev) => prev.map((p, j) => (j === i ? v : p)) as [string, string, string]);
+
+  const inputActive = pane === "input";
+  const nameFocused = inputActive && fieldIndex === valueFieldCount;
+
   return (
     <Box flexDirection="column" paddingX={1}>
       <Box>
-        <Text bold>rampkit </Text>
-        <Text dimColor>· color: </Text>
-        <TextInput
-          value={value}
-          onChange={setValue}
-          focus={focusField === "color"}
-          placeholder="#451dc7"
-        />
-      </Box>
-      <Box marginBottom={1}>
-        <Text dimColor>{"         · name:  "}</Text>
-        <TextInput
-          value={name}
-          onChange={setName}
-          focus={focusField === "name"}
-          placeholder="color"
-        />
+        <Text bold>rampkit</Text>
       </Box>
 
-      {error && <Text color="red">⚠ {error}</Text>}
-
-      {scale && (
-        <Box flexDirection="column">
-          {STOPS.map((stop) => {
-            const hex = scale[stop];
-            return (
-              <Box key={stop}>
-                <Box width={5} justifyContent="flex-end" marginRight={1}>
-                  <Text dimColor>{stop}</Text>
+      {/* Input pane */}
+      <Box
+        flexDirection="column"
+        borderStyle="round"
+        borderColor={inputActive ? "cyan" : "gray"}
+        paddingX={1}
+      >
+        <Box>
+          <Text dimColor>input </Text>
+          <Text color="cyan">{inputFormat}</Text>
+          <Text dimColor> ↑↓   </Text>
+          {inputFormat === "hex" ? (
+            <TextInput
+              value={hexValue}
+              onChange={setHexValue}
+              focus={inputActive && fieldIndex === 0}
+              placeholder="#451dc7"
+            />
+          ) : (
+            <Box>
+              {([0, 1, 2] as const).map((i) => (
+                <Box key={i} marginRight={2}>
+                  <Text dimColor>{COMP_LABELS[inputFormat][i]} </Text>
+                  <TextInput
+                    value={comps[i]}
+                    onChange={setComp(i)}
+                    focus={inputActive && fieldIndex === i}
+                    placeholder="0"
+                  />
                 </Box>
-                <Text backgroundColor={hex} color={readableText(hex)}>
-                  {`  ${hex}  `}
-                </Text>
-              </Box>
-            );
-          })}
-
-          <Box flexDirection="column" marginTop={1}>
-            <Text dimColor>{`── ${target} `.padEnd(40, "─")}</Text>
-            <Text>{output}</Text>
-          </Box>
+              ))}
+            </Box>
+          )}
         </Box>
-      )}
+        <Box marginBottom={1}>
+          <Text dimColor>name </Text>
+          <TextInput value={name} onChange={setName} focus={nameFocused} placeholder="color" />
+        </Box>
+
+        {view.error && <Text color="red">⚠ {view.error}</Text>}
+
+        {view.hexScale && view.labelScale && (
+          <Box flexDirection="column">
+            {STOPS.map((stop) => {
+              const hex = view.hexScale![stop];
+              const label = view.labelScale![stop];
+              const isAnchor = hex === view.anchorHex;
+              return (
+                <Box key={stop}>
+                  <Box width={2}>
+                    <Text color={hex}>{isAnchor ? "*" : " "}</Text>
+                  </Box>
+                  <Box width={4} justifyContent="flex-end" marginRight={1}>
+                    <Text color={isAnchor ? hex : undefined} dimColor={!isAnchor} bold={isAnchor}>
+                      {stop}
+                    </Text>
+                  </Box>
+                  <Text backgroundColor={hex} color={readableText(hex)}>
+                    {"      "}
+                  </Text>
+                  <Text> </Text>
+                  <Text color={isAnchor ? hex : undefined} bold={isAnchor}>
+                    {label}
+                  </Text>
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+      </Box>
+
+      {/* Output pane */}
+      <Box
+        flexDirection="column"
+        borderStyle="round"
+        borderColor={!inputActive ? "cyan" : "gray"}
+        paddingX={1}
+      >
+        <Box>
+          <Text dimColor>output </Text>
+          <Text color="cyan">{outFormat}</Text>
+          <Text dimColor> · </Text>
+          <Text color="cyan">{outSpace}</Text>
+        </Box>
+        {output ? <Text>{output}</Text> : <Text dimColor>—</Text>}
+      </Box>
 
       <Box flexDirection="column" marginTop={1}>
         <Text dimColor>
-          Tab: switch field · Shift+Tab: cycle format · Enter: copy · Esc/Ctrl-C: quit
+          {inputActive
+            ? "↑↓: input notation · Tab: field · Shift+Tab: output pane · Enter: copy · Esc: quit"
+            : "↑↓: color syntax · Tab: output format · Shift+Tab: input pane · Enter: copy · Esc: quit"}
         </Text>
         {status && <Text color={status.startsWith("⚠") ? "red" : "green"}>{status}</Text>}
       </Box>
