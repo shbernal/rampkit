@@ -1,10 +1,15 @@
-# @shbernal/rampkit
+# rampkit
 
 Generate Tailwind-style color ramps (`50`–`950`) from a single input color — the
 exact input is preserved at its natural stop — and emit the result in several
 output formats, not just a Tailwind config object.
 
-> Status: **early scaffold.** The ramp engine and formatters are being built.
+rampkit ships three ways to use it from one repo:
+
+| Package | Install | Use |
+| --- | --- | --- |
+| **Library** — [`@shbernal/rampkit`](./packages/core) | `bun add @shbernal/rampkit` | `import { ramp, format }` in your code |
+| **CLI + TUI** — [`@shbernal/rampkit-cli`](./packages/app) | `bun add -g @shbernal/rampkit-cli` | `rampkit '#451dc7'` (CLI) or bare `rampkit` (TUI) |
 
 ## Why
 
@@ -14,16 +19,55 @@ open source. `rampkit` aims to be: maintained, TypeScript, Tailwind v4-aware, an
 installable npm package, broad input encodings, and **multi-format output** — all
 under a permissive (MIT) license.
 
-## Planned API (subject to change)
+## Library
 
 ```ts
 import { ramp, format } from "@shbernal/rampkit";
 
-const scale = ramp("#451DC7");            // { 50: "...", ..., 950: "..." }
-format(scale, "tailwind-v4");             // @theme CSS variables
+const scale = ramp("#451dc7");            // { 50: "...", ..., 950: "..." }
+format(scale, "tailwind-v4");             // @theme custom properties
 format(scale, "css-vars");                // :root custom properties
-format(scale, "json");                    // design-token JSON
+format(scale, "tailwind-config");         // { color: { 50: "...", ... } }
+format(scale, "json");                    // flat stop→hex map
+format(scale, "hex-array");               // ["#...", ...] lightest→darkest
 ```
+
+`ramp(input, options)` accepts any CSS color string culori understands (hex,
+`rgb()`, `hsl()`, `oklch()`, named colors, …). Options: `anchor`, `chroma`,
+`hueShift`, `lMin`, `lMax`. A terminal preview helper is available at the
+`@shbernal/rampkit/ansi` subpath.
+
+## CLI
+
+```bash
+rampkit '#451dc7'                          # tailwind-v4 @theme (default)
+rampkit rebeccapurple -f css-vars -n brand # other format + token name
+rampkit '#0ea5e9' -f json --preview        # JSON to stdout, swatches to stderr
+echo '#0ea5e9' | rampkit -f hex-array      # read color from stdin
+rampkit --help
+```
+
+Output goes to stdout (clean for piping); `--preview` swatches go to stderr.
+
+## TUI
+
+Run `rampkit` with no arguments in an interactive terminal to launch the TUI:
+type a color and watch the ramp redraw live as truecolor swatches, press **Tab**
+to cycle output formats, **Esc**/**Ctrl-C** to quit.
+
+## Development
+
+This is a [bun](https://bun.sh) workspace monorepo (`packages/core`, `packages/app`).
+
+```bash
+bun install
+bun run build      # tsc build for the lib, bundled bin for the app
+bun test           # core test suite
+bun run typecheck  # tsc --noEmit across packages
+bun run dev        # run the app from source (TUI)
+```
+
+The library is **ESM-only**.
 
 ## Credit / provenance
 

@@ -1,0 +1,49 @@
+{
+  "name": "@shbernal/rampkit-cli",
+  "version": "0.0.0",
+  "description": "CLI and interactive TUI for generating Tailwind-style color ramps with rampkit.",
+  "type": "module",
+  "license": "MIT",
+  "author": "shbernal <shbernal.01@gmail.com>",
+  "keywords": [
+    "tailwind",
+    "tailwindcss",
+    "color",
+    "palette",
+    "ramp",
+    "cli",
+    "tui",
+    "ink",
+    "oklch"
+  ],
+  "bin": {
+    "rampkit": "./dist/main.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && bun build src/main.ts --target=node --format esm --splitting --outdir dist --external react-devtools-core --banner '#!/usr/bin/env node' && chmod +x dist/main.js",
+    "dev": "bun run src/main.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shbernal/rampkit.git",
+    "directory": "packages/app"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@shbernal/rampkit": "workspace:*",
+    "ink": "^5.1.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^18.3.1"
+  }
+}

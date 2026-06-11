@@ -10,8 +10,6 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "verbatimModuleSyntax": true,
-    "outDir": "dist"
-  },
-  "include": ["src"]
+    "verbatimModuleSyntax": true
+  }
 }
