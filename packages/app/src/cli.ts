@@ -4,10 +4,11 @@
 
 import { parseArgs } from "node:util";
 import { ramp, format, STOPS } from "@shbernal/rampkit";
-import type { Format, RampOptions, Stop } from "@shbernal/rampkit";
+import type { Format, RampOptions, Stop, ColorSpace } from "@shbernal/rampkit";
 import { swatches } from "@shbernal/rampkit/ansi";
 
 const FORMATS: Format[] = ["tailwind-v4", "css-vars", "tailwind-config", "json", "hex-array"];
+const COLOR_SPACES: ColorSpace[] = ["hex", "rgb", "hsl", "oklch"];
 
 const HELP = `rampkit — Tailwind-style color ramps from a single color
 
@@ -18,6 +19,7 @@ Usage:
 
 Options:
   -f, --format <fmt>   Output format: ${FORMATS.join(", ")} (default: tailwind-v4)
+      --color <space>  Color syntax: ${COLOR_SPACES.join(", ")} (default: hex)
   -n, --name <name>    Token name used in variable/key output (default: color)
   -a, --anchor <stop>  Force the stop where the input is preserved (50..950)
   -c, --chroma <mul>   Global chroma multiplier (default: 1)
@@ -31,7 +33,8 @@ Options:
 Examples:
   rampkit '#451dc7'
   rampkit rebeccapurple --format css-vars --name brand
-  rampkit '#0ea5e9' -f json --preview`;
+  rampkit '#0ea5e9' -f json --preview
+  rampkit '#0ea5e9' --color oklch -f css-vars`;
 
 function fail(message: string): never {
   const text = message.startsWith("rampkit:") ? message : `rampkit: ${message}`;
@@ -51,6 +54,7 @@ export async function runCli(argv: string[], version: string): Promise<void> {
     allowPositionals: true,
     options: {
       format: { type: "string", short: "f" },
+      color: { type: "string" },
       name: { type: "string", short: "n" },
       anchor: { type: "string", short: "a" },
       chroma: { type: "string", short: "c" },
@@ -80,6 +84,11 @@ export async function runCli(argv: string[], version: string): Promise<void> {
     fail(`unknown format "${target}". Valid: ${FORMATS.join(", ")}`);
   }
 
+  const colorSpace = (values.color ?? "hex") as ColorSpace;
+  if (!COLOR_SPACES.includes(colorSpace)) {
+    fail(`unknown color space "${colorSpace}". Valid: ${COLOR_SPACES.join(", ")}`);
+  }
+
   const num = (key: string, raw: string | undefined): number | undefined => {
     if (raw === undefined) return undefined;
     const n = Number(raw);
@@ -87,7 +96,7 @@ export async function runCli(argv: string[], version: string): Promise<void> {
     return n;
   };
 
-  const options: RampOptions = {};
+  const options: RampOptions = { colorSpace };
   if (values.anchor !== undefined) {
     const anchor = Number(values.anchor) as Stop;
     if (!STOPS.includes(anchor)) fail(`--anchor must be one of ${STOPS.join(", ")}`);

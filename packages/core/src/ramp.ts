@@ -14,11 +14,35 @@
 //      multiplier), then gamut-map each stop into sRGB by reducing chroma —
 //      which naturally tapers saturation at the light and dark extremes.
 
-import { oklch, formatHex, clampChroma } from "culori";
+import { oklch, formatHex, formatRgb, formatHsl, clampChroma } from "culori";
+import type { Color } from "culori";
 
 export const STOPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as const;
 export type Stop = (typeof STOPS)[number];
 export type Ramp = Record<Stop, string>;
+
+/** Color syntax used for each value in the ramp. */
+export type ColorSpace = "hex" | "rgb" | "hsl" | "oklch";
+
+/** Round to ~4 significant digits for readable oklch() output. */
+const sig = (n: number): number => Number(n.toPrecision(4));
+
+/** Serialize a culori color (or color string) into the requested CSS syntax. */
+function serialize(color: Color | string, space: ColorSpace): string {
+  switch (space) {
+    case "hex":
+      return formatHex(color) ?? "#000000";
+    case "rgb":
+      return formatRgb(color) ?? "rgb(0 0 0)";
+    case "hsl":
+      return formatHsl(color) ?? "hsl(0 0% 0%)";
+    case "oklch": {
+      const c = oklch(color);
+      if (!c) return "oklch(0 0 0)";
+      return `oklch(${sig(c.l)} ${sig(c.c)} ${sig(c.h ?? 0)})`;
+    }
+  }
+}
 
 /** Reference OKLCH lightness per stop, used to auto-pick the anchor. Approximates
  *  the Tailwind v4 default families so generated ramps sit naturally alongside them. */
@@ -47,6 +71,8 @@ export interface RampOptions {
   hueShift?: number;
   /** Global multiplier on the input chroma. Default 1. */
   chroma?: number;
+  /** Output color syntax for each stop. Default "hex". */
+  colorSpace?: ColorSpace;
 }
 
 function nearestStop(l: number): Stop {
@@ -67,7 +93,8 @@ const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 /**
  * Generate a Tailwind-style 50–950 ramp from a single input color.
  * Accepts any CSS color string culori understands (hex, rgb(), hsl(), oklch(),
- * named colors, …). Returns lowercase `#rrggbb` strings.
+ * named colors, …). Each stop is emitted in the requested `colorSpace`
+ * (`hex` by default); the exact input is preserved at its anchor stop.
  */
 export function ramp(input: string, options: RampOptions = {}): Ramp {
   const base = oklch(input);
@@ -82,11 +109,12 @@ export function ramp(input: string, options: RampOptions = {}): Ramp {
   const hueShift = options.hueShift ?? 0;
   const chromaMul = options.chroma ?? 1;
   const anchor = options.anchor ?? nearestStop(baseL);
+  const colorSpace = options.colorSpace ?? "hex";
 
   const result = {} as Ramp;
   for (const stop of STOPS) {
     if (stop === anchor) {
-      result[stop] = formatHex(input) ?? "#000000";
+      result[stop] = serialize(input, colorSpace);
       continue;
     }
 
@@ -100,7 +128,7 @@ export function ramp(input: string, options: RampOptions = {}): Ramp {
     const c = baseC * chromaMul;
 
     const inGamut = clampChroma({ mode: "oklch", l, c, h }, "oklch");
-    result[stop] = formatHex(inGamut) ?? "#000000";
+    result[stop] = serialize(inGamut, colorSpace);
   }
   return result;
 }
