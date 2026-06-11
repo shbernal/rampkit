@@ -17,11 +17,11 @@
     "prepare": "lefthook install"
   },
   "devDependencies": {
-    "@types/culori": "^2.1.1",
-    "@types/node": "^22.10.5",
+    "@types/culori": "^4.0.1",
+    "@types/node": "^25.9.3",
     "@types/react": "^18.3.18",
     "lefthook": "^2.1.9",
     "prettier": "^3.8.4",
-    "typescript": "^5.7.2"
+    "typescript": "^6.0.3"
   }
 }

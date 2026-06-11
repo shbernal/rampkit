@@ -38,6 +38,29 @@ The library is **ESM-only** — no CommonJS.
 - CLI contract: data → **stdout**; `--preview` swatches and diagnostics →
   **stderr**.
 
+## Publishing
+
+Both packages are published with **`bun publish`** (not `npm publish`): the app
+declares `@shbernal/rampkit` as a `workspace:*` dependency, and `bun publish`
+rewrites that to the concrete version on publish — `npm publish` would ship the
+literal `workspace:*` and break installs.
+
+Publish order matters — release the library first so the CLI's resolved version
+exists on the registry:
+
+```bash
+# 1. bump versions in lockstep:
+#    packages/core/package.json, packages/core/src/index.ts (VERSION),
+#    packages/app/package.json
+bun publish --cwd packages/core   # @shbernal/rampkit
+bun publish --cwd packages/app    # @shbernal/rampkit-cli
+```
+
+Each package's `prepublishOnly` runs `bun run build` first, so `dist/` (which is
+git-ignored) is always freshly built before it ships. The app bundles all its
+runtime deps (culori, ink, react, the core lib) into `dist/`, so they live in
+`devDependencies` and nothing extra is pulled in on `npm i -g @shbernal/rampkit-cli`.
+
 ## Regenerating the demo
 
 The README's TUI demo is `demo.gif`, rendered from `demo.tape` with
