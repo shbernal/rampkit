@@ -45,6 +45,27 @@ of truth** for your stylesheet. This is faithful, not lossy: every stop is
 already gamut-mapped into sRGB, so the swatch shows exactly the color the value
 denotes — just in 24-bit form.
 
+## Testing
+
+Coverage comes in two tiers, kept separate so a failure tells you how much to
+trust it:
+
+- **Unit tests (`bun test`) — deterministic, the source of truth.** The input
+  pane's logic (range clamping, hue-wrapping, notation conversion,
+  incomplete-input handling) lives in `src/color-input.ts` and is tested in
+  `src/color-input.test.ts`. These never flake: **a failure is a real bug.**
+- **TUI smoke check (`scripts/tui-smoke.py`) — a manual, timing-sensitive
+  sanity tool.** It drives the real TUI in a pseudo-terminal to confirm the
+  panes render and keys route correctly — the wiring unit tests can't reach. It
+  is **not** part of `bun test` precisely because pty timing can produce
+  false alarms; the script's header explains what to rule out before trusting a
+  failure. Run it manually after `bun run build`:
+
+  ```bash
+  python3 packages/app/scripts/tui-smoke.py
+  RAMPKIT_SMOKE_DELAY=0.6 python3 packages/app/scripts/tui-smoke.py   # slower box
+  ```
+
 ## License
 
 [MIT](./LICENSE) © shbernal
