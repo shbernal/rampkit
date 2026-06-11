@@ -19,8 +19,18 @@ format(scale, "hex-array");           // ["#...", ...] lightest→darkest
 ```
 
 `ramp(input, options)` accepts any CSS color string culori understands. Options:
-`anchor`, `chroma`, `hueShift`, `lMin`, `lMax`. A terminal swatch-preview helper
-is available at the `@shbernal/rampkit/ansi` subpath.
+`anchor`, `chroma`, `hueShift`, `lMin`, `lMax`, and `colorSpace`
+(`"hex"` · `"rgb"` · `"hsl"` · `"oklch"`, default `"hex"`) — the syntax each stop
+is emitted in:
+
+```ts
+ramp("#0ea5e9", { colorSpace: "oklch" }); // { 500: "oklch(0.601 0.132 237.3)", ... }
+```
+
+Values are serialized from the engine's internal OKLCH (so `oklch` is lossless),
+and every stop is gamut-mapped into sRGB regardless of syntax. A terminal
+swatch-preview helper is available at the `@shbernal/rampkit/ansi` subpath; it
+renders any syntax as 24-bit sRGB swatches.
 
 For the CLI and interactive TUI, see
 [`@shbernal/rampkit-cli`](https://www.npmjs.com/package/@shbernal/rampkit-cli).

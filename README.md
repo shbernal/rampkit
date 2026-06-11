@@ -34,26 +34,32 @@ format(scale, "hex-array");               // ["#...", ...] lightest→darkest
 
 `ramp(input, options)` accepts any CSS color string culori understands (hex,
 `rgb()`, `hsl()`, `oklch()`, named colors, …). Options: `anchor`, `chroma`,
-`hueShift`, `lMin`, `lMax`. A terminal preview helper is available at the
-`@shbernal/rampkit/ansi` subpath.
+`hueShift`, `lMin`, `lMax`, and `colorSpace` (`hex`/`rgb`/`hsl`/`oklch`) to
+choose the syntax each stop is emitted in. A terminal preview helper is
+available at the `@shbernal/rampkit/ansi` subpath.
 
 ## CLI
 
 ```bash
 rampkit '#451dc7'                          # tailwind-v4 @theme (default)
 rampkit rebeccapurple -f css-vars -n brand # other format + token name
+rampkit '#0ea5e9' --color oklch -f css-vars # emit oklch() values
 rampkit '#0ea5e9' -f json --preview        # JSON to stdout, swatches to stderr
 echo '#0ea5e9' | rampkit -f hex-array      # read color from stdin
 rampkit --help
 ```
 
-Output goes to stdout (clean for piping); `--preview` swatches go to stderr.
+`--color` picks the value syntax (`hex`/`rgb`/`hsl`/`oklch`). Output goes to
+stdout (clean for piping); `--preview` swatches go to stderr.
 
 ## TUI
 
-Run `rampkit` with no arguments in an interactive terminal to launch the TUI:
-type a color and watch the ramp redraw live as truecolor swatches, press **Tab**
-to cycle output formats, **Esc**/**Ctrl-C** to quit.
+Run `rampkit` with no arguments in an interactive terminal to launch the TUI.
+It splits into an **input** pane and an **output** pane (**Shift+Tab** to switch
+focus): **↑/↓** cycle the input notation / output color syntax, **Tab** cycles
+fields / output formats, **Enter** copies, **Esc**/**Ctrl-C** quits. Swatches
+are painted in 24-bit sRGB (a faithful preview — terminals can't render `oklch()`
+or wide gamuts); the emitted text values are the source of truth.
 
 ## Development
 

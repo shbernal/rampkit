@@ -21,6 +21,9 @@ import { readableText } from "@shbernal/rampkit/ansi";
 const FORMATS: Format[] = ["tailwind-v4", "css-vars", "tailwind-config", "json", "hex-array"];
 const COLOR_SPACES: ColorSpace[] = ["hex", "rgb", "hsl", "oklch"];
 
+/** Width, in characters, of each swatch's color block. */
+const BAR_WIDTH = 18;
+
 // Input notations the color can be entered in. `hex` is a single free-text field
 // (and accepts any CSS color string); the rest are three numeric components.
 type InputFormat = "hex" | "oklch" | "rgb" | "hsl";
@@ -287,7 +290,7 @@ function App({ initial }: { initial: string }) {
                     </Text>
                   </Box>
                   <Text backgroundColor={hex} color={readableText(hex)}>
-                    {"      "}
+                    {" ".repeat(BAR_WIDTH)}
                   </Text>
                   <Text> </Text>
                   <Text color={isAnchor ? hex : undefined} bold={isAnchor}>

@@ -12,19 +12,38 @@ bun add -g @shbernal/rampkit-cli   # or: npm i -g @shbernal/rampkit-cli
 ```bash
 rampkit '#451dc7'                          # tailwind-v4 @theme (default)
 rampkit rebeccapurple -f css-vars -n brand # other format + token name
+rampkit '#0ea5e9' --color oklch -f css-vars # emit oklch() values
 rampkit '#0ea5e9' -f json --preview        # JSON to stdout, swatches to stderr
 echo '#0ea5e9' | rampkit -f hex-array      # read color from stdin
 rampkit --help
 ```
 
 Formats: `tailwind-v4`, `css-vars`, `tailwind-config`, `json`, `hex-array`.
+Color syntaxes (`--color`): `hex` (default), `rgb`, `hsl`, `oklch`.
 Output goes to stdout (clean for piping); `--preview` swatches go to stderr.
 
 ## TUI
 
-Run `rampkit` with no arguments in an interactive terminal: type a color and
-watch the ramp redraw live as truecolor swatches, **Tab** to cycle formats,
-**Esc**/**Ctrl-C** to quit.
+Run `rampkit` with no arguments in an interactive terminal. The screen splits
+into two panes; **Shift+Tab** moves focus between them.
+
+- **Input** — **↑/↓** cycle the input notation (`hex`/`oklch`/`rgb`/`hsl`),
+  re-expressing the same color; **Tab** cycles the value field(s) then the token
+  name. The scale lists each stop's value beside its swatch and marks the
+  preserved input with `*`.
+- **Output** — **↑/↓** cycle the output color syntax, **Tab** cycles the output
+  format. **Enter** copies the result to the clipboard (works over SSH).
+
+**Esc**/**Ctrl-C** quits.
+
+### Swatches are sRGB previews
+
+Terminals can only paint 24-bit sRGB (and many only 256 colors) — there is no
+`oklch()` or wide-gamut escape sequence. So whatever notation you pick, the
+**swatch blocks are rendered in sRGB**; the **emitted text values are the source
+of truth** for your stylesheet. This is faithful, not lossy: every stop is
+already gamut-mapped into sRGB, so the swatch shows exactly the color the value
+denotes — just in 24-bit form.
 
 ## License
 
