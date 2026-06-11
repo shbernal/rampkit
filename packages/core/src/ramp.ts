@@ -27,11 +27,18 @@ export type ColorSpace = "hex" | "rgb" | "hsl" | "oklch";
 /** Round to ~4 significant digits for readable oklch() output. */
 const sig = (n: number): number => Number(n.toPrecision(4));
 
-/** Serialize a culori color (or color string) into the requested CSS syntax. */
-function serialize(color: Color | string, space: ColorSpace): string {
+/**
+ * Serialize a culori color (or color string) into the requested CSS syntax.
+ * `hexHash` and `hexCase` shape the `"hex"` space only; other spaces ignore them.
+ */
+function serialize(color: Color | string, space: ColorSpace, hexHash: boolean, hexCase: "lower" | "upper"): string {
   switch (space) {
-    case "hex":
-      return formatHex(color) ?? "#000000";
+    case "hex": {
+      let hex = formatHex(color) ?? "#000000";
+      if (hexCase === "upper") hex = hex.toUpperCase();
+      if (!hexHash) hex = hex.replace(/^#/, "");
+      return hex;
+    }
     case "rgb":
       return formatRgb(color) ?? "rgb(0 0 0)";
     case "hsl":
@@ -61,18 +68,47 @@ const REFERENCE_L: Record<Stop, number> = {
 };
 
 export interface RampOptions {
-  /** Force the stop where the input color is preserved. Default: nearest by lightness. */
+  /**
+   * Force the stop where the input color is preserved.
+   * @defaultValue the stop whose reference lightness is nearest the input's
+   */
   anchor?: Stop;
-  /** OKLCH lightness at the virtual stop 0 (near white). Default 0.995. */
+  /**
+   * OKLCH lightness at the virtual stop 0 (near white).
+   * @defaultValue 0.995
+   */
   lMax?: number;
-  /** OKLCH lightness at the virtual stop 1000 (near black). Default 0.18. */
+  /**
+   * OKLCH lightness at the virtual stop 1000 (near black).
+   * @defaultValue 0.18
+   */
   lMin?: number;
-  /** Degrees of hue drift applied across the full 0→1000 range. Default 0 (single hue). */
+  /**
+   * Degrees of hue drift applied across the full 0→1000 range (0 = single hue).
+   * @defaultValue 0
+   */
   hueShift?: number;
-  /** Global multiplier on the input chroma. Default 1. */
+  /**
+   * Global multiplier on the input chroma.
+   * @defaultValue 1
+   */
   chroma?: number;
-  /** Output color syntax for each stop. Default "hex". */
+  /**
+   * Output color syntax for each stop.
+   * @defaultValue "hex"
+   */
   colorSpace?: ColorSpace;
+  /**
+   * Emit the leading `#` on `"hex"` output. Set `false` for bare hex (e.g.
+   * Office/PptxGenJS color form). Ignored for non-hex color spaces.
+   * @defaultValue true
+   */
+  hexHash?: boolean;
+  /**
+   * Letter case for `"hex"` output. Ignored for non-hex color spaces.
+   * @defaultValue "lower"
+   */
+  hexCase?: "lower" | "upper";
 }
 
 function nearestStop(l: number): Stop {
@@ -92,9 +128,29 @@ const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
 /**
  * Generate a Tailwind-style 50–950 ramp from a single input color.
- * Accepts any CSS color string culori understands (hex, rgb(), hsl(), oklch(),
- * named colors, …). Each stop is emitted in the requested `colorSpace`
- * (`hex` by default); the exact input is preserved at its anchor stop.
+ *
+ * Accepts any CSS color string culori understands (hex, `rgb()`, `hsl()`,
+ * `oklch()`, named colors, …). Each stop is emitted in the requested
+ * `colorSpace` (`"hex"` by default); the exact input is preserved at its anchor
+ * stop. The returned {@link Ramp} is a plain object keyed by numeric stop, ready
+ * to embed in design tokens — pass it to {@link format} for a string output.
+ *
+ * @param input - Any CSS color string (e.g. `"#451dc7"`, `"rebeccapurple"`, `"oklch(0.6 0.2 270)"`).
+ * @param options - See {@link RampOptions}.
+ * @returns A {@link Ramp}: `{ 50, 100, …, 950 }` mapping each stop to a color string.
+ * @throws If `input` cannot be parsed as a color.
+ *
+ * @example Default ramp, preserving the input at its nearest stop
+ * ```ts
+ * ramp("#451dc7");
+ * // { 50: "#eff0ff", …, 700: "#451dc7", …, 950: "#1c0061" }
+ * ```
+ *
+ * @example Force the anchor stop and emit bare uppercase hex (Office/PptxGenJS form)
+ * ```ts
+ * ramp("#451DC7", { anchor: 800, hexHash: false, hexCase: "upper" });
+ * // { 50: "EFF0FF", …, 800: "451DC7", …, 950: "1C0061" }
+ * ```
  */
 export function ramp(input: string, options: RampOptions = {}): Ramp {
   const base = oklch(input);
@@ -110,25 +166,24 @@ export function ramp(input: string, options: RampOptions = {}): Ramp {
   const chromaMul = options.chroma ?? 1;
   const anchor = options.anchor ?? nearestStop(baseL);
   const colorSpace = options.colorSpace ?? "hex";
+  const hexHash = options.hexHash ?? true;
+  const hexCase = options.hexCase ?? "lower";
 
   const result = {} as Ramp;
   for (const stop of STOPS) {
     if (stop === anchor) {
-      result[stop] = serialize(input, colorSpace);
+      result[stop] = serialize(input, colorSpace, hexHash, hexCase);
       continue;
     }
 
-    const l =
-      stop < anchor
-        ? lerp(lMax, baseL, stop / anchor)
-        : lerp(baseL, lMin, (stop - anchor) / (1000 - anchor));
+    const l = stop < anchor ? lerp(lMax, baseL, stop / anchor) : lerp(baseL, lMin, (stop - anchor) / (1000 - anchor));
 
     const dist = (stop - anchor) / 1000;
     const h = baseH + hueShift * dist;
     const c = baseC * chromaMul;
 
     const inGamut = clampChroma({ mode: "oklch", l, c, h }, "oklch");
-    result[stop] = serialize(inGamut, colorSpace);
+    result[stop] = serialize(inGamut, colorSpace, hexHash, hexCase);
   }
   return result;
 }

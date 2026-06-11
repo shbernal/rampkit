@@ -4,7 +4,7 @@
 // however it's surfaced. Pure string output, no terminal/IO dependencies.
 
 import { rgb } from "culori";
-import type { Ramp } from "./ramp";
+import type { Ramp } from "./ramp.js";
 
 const RESET = "\x1b[0m";
 

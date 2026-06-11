@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { rgb, inGamut } from "culori";
-import { ramp, STOPS } from "./ramp";
-import type { ColorSpace } from "./ramp";
+import { ramp, STOPS } from "./ramp.js";
+import type { ColorSpace } from "./ramp.js";
 
 const srgb = inGamut("rgb");
 const SPACES: ColorSpace[] = ["hex", "rgb", "hsl", "oklch"];
@@ -107,5 +107,27 @@ test("default color space stays hex", () => {
   const scale = ramp("#0ea5e9");
   for (const value of Object.values(scale)) {
     expect(value).toMatch(/^#[0-9a-f]{6}$/);
+  }
+});
+
+test("hexHash:false drops the leading # on hex output", () => {
+  const scale = ramp("#0ea5e9", { hexHash: false });
+  for (const value of Object.values(scale)) {
+    expect(value).toMatch(/^[0-9a-f]{6}$/);
+  }
+});
+
+test("hexCase:upper uppercases hex output and preserves the anchor", () => {
+  const scale = ramp("#451DC7", { anchor: 800, hexHash: false, hexCase: "upper" });
+  for (const value of Object.values(scale)) {
+    expect(value).toMatch(/^[0-9A-F]{6}$/);
+  }
+  expect(scale[800]).toBe("451DC7");
+});
+
+test("hex options are ignored for non-hex color spaces", () => {
+  const scale = ramp("#0ea5e9", { colorSpace: "rgb", hexHash: false, hexCase: "upper" });
+  for (const value of Object.values(scale)) {
+    expect(value).toMatch(/^rgb\(/);
   }
 });

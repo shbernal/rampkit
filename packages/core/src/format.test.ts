@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
-import { ramp } from "./ramp";
-import { format } from "./format";
+import { ramp } from "./ramp.js";
+import { format } from "./format.js";
 
 const scale = ramp("#451dc7");
 
