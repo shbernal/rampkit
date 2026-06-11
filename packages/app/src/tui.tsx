@@ -1,5 +1,6 @@
-// Interactive TUI (Ink). Type a color, watch the ramp redraw live, Tab through
-// output formats, Escape/Ctrl-C to quit. Swatches are drawn with Ink's own
+// Interactive TUI (Ink). Type a color, watch the ramp redraw live, set the
+// token name, Tab between the color/name fields, Shift+Tab through output
+// formats, Escape/Ctrl-C to quit. Swatches are drawn with Ink's own
 // backgroundColor; label contrast reuses core's readableText.
 
 import { useState, useMemo } from "react";
@@ -23,11 +24,14 @@ function safeRamp(input: string): { scale?: Ramp; error?: string } {
 function App({ initial }: { initial: string }) {
   const { exit } = useApp();
   const [value, setValue] = useState(initial);
+  const [name, setName] = useState("");
+  const [focusField, setFocusField] = useState<"color" | "name">("color");
   const [formatIndex, setFormatIndex] = useState(0);
 
   useInput((input, key) => {
     if (key.escape) exit();
-    if (key.tab) setFormatIndex((i) => (i + 1) % FORMATS.length);
+    if (key.tab && key.shift) setFormatIndex((i) => (i + 1) % FORMATS.length);
+    else if (key.tab) setFocusField((f) => (f === "color" ? "name" : "color"));
   });
 
   const target = FORMATS[formatIndex]!;
@@ -35,10 +39,24 @@ function App({ initial }: { initial: string }) {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Box marginBottom={1}>
+      <Box>
         <Text bold>rampkit </Text>
         <Text dimColor>· color: </Text>
-        <TextInput value={value} onChange={setValue} placeholder="#451dc7" />
+        <TextInput
+          value={value}
+          onChange={setValue}
+          focus={focusField === "color"}
+          placeholder="#451dc7"
+        />
+      </Box>
+      <Box marginBottom={1}>
+        <Text dimColor>{"         · name:  "}</Text>
+        <TextInput
+          value={name}
+          onChange={setName}
+          focus={focusField === "name"}
+          placeholder="color"
+        />
       </Box>
 
       {error && <Text color="red">⚠ {error}</Text>}
@@ -61,13 +79,13 @@ function App({ initial }: { initial: string }) {
 
           <Box flexDirection="column" marginTop={1}>
             <Text dimColor>{`── ${target} `.padEnd(40, "─")}</Text>
-            <Text>{format(scale, target)}</Text>
+            <Text>{format(scale, target, { name: name.trim() || undefined })}</Text>
           </Box>
         </Box>
       )}
 
       <Box marginTop={1}>
-        <Text dimColor>Tab: cycle format · Esc/Ctrl-C: quit</Text>
+        <Text dimColor>Tab: switch field · Shift+Tab: cycle format · Esc/Ctrl-C: quit</Text>
       </Box>
     </Box>
   );
