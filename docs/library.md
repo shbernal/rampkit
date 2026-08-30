@@ -31,6 +31,11 @@ const scale = ramp("#451dc7");
 | `lMin` / `lMax` | Clamp how dark the darkest stop and how light the lightest one get.                |
 | `colorSpace`    | Syntax each stop is written in: `hex` (default), `rgb`, `hsl`, or `oklch`.         |
 
+`lMin` has to be below `lMax`. Passed the other way round they throw, rather
+than building the ramp upside down: interpolation runs happily in either
+direction, so a reversed ramp is legible end to end and every contrast inside
+it still holds. It only looks wrong, everywhere, for a reason nothing points at.
+
 ## `format(scale, format, options?)`
 
 Render a scale into an output format:

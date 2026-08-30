@@ -141,6 +141,11 @@ export interface RampOptions extends SerializeOptions {
   /**
    * OKLCH lightness at the virtual stop 0 (near white). Widened automatically
    * when the input is lighter than this, so the ramp never inverts.
+   *
+   * Must be above `lMin`. The pair are not swapped when they arrive backwards:
+   * `lerp` runs happily in either direction, so a reversed ramp is legible end
+   * to end and every relationship inside it still holds — it is simply upside
+   * down, everywhere, with nothing to point at.
    * @defaultValue 0.995
    */
   lMax?: number;
@@ -148,6 +153,8 @@ export interface RampOptions extends SerializeOptions {
    * OKLCH lightness at the virtual stop 1000 (near black). Widened
    * automatically when the input is darker than this, so the ramp never
    * inverts.
+   *
+   * Must be below `lMax`; see {@link RampOptions.lMax}.
    * @defaultValue 0.18
    */
   lMin?: number;
