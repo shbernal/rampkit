@@ -224,6 +224,33 @@ export function nearestStop(l: number, table: Record<Stop, number> = REFERENCE_L
   return best;
 }
 
+/**
+ * The stop a color belongs to on its own — the anchor {@link ramp} picks when
+ * none is forced, which is the stop whose reference lightness sits nearest the
+ * input's.
+ *
+ * Useful before there is a ramp at all. A consumer whose roles read fixed stops
+ * (a primary at `600`, a status at `500`) cannot choose the anchor to suit the
+ * color, so it forces one — and forcing a far anchor is legal and quiet. A color
+ * whose natural home is `300`, pinned at `600`, spends the whole light half
+ * inside a few pale tones nobody can tell apart, and nothing about the call site
+ * says so. The distance between the two numbers is the whole story; this returns
+ * the one the API used to keep to itself.
+ *
+ * @param input - Any CSS color string culori parses.
+ * @returns The stop the color would be preserved at with no `anchor` option.
+ * @throws If `input` is not a string or cannot be parsed as a color.
+ *
+ * @example Warn when a role's stop is far from the color's own
+ * ```ts
+ * const natural = naturalStop("#88C0D0"); // 300
+ * if (natural !== 600) console.warn(`#88C0D0 is a ${natural}, asked for a 600`);
+ * ```
+ */
+export function naturalStop(input: string): Stop {
+  return nearestStop(parseColor(input).l);
+}
+
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
 /**

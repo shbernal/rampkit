@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import { rgb, oklch, inGamut } from "culori";
-import { ramp, rampColors, serializeRamp, nearestStop, REFERENCE_L, STOPS, COLOR_SPACES } from "./ramp.js";
+import { ramp, rampColors, serializeRamp, naturalStop, nearestStop, REFERENCE_L, STOPS, COLOR_SPACES } from "./ramp.js";
 import { deriveReferenceL } from "../scripts/reference-l.js";
 import type { ColorSpace, Ramp, Stop } from "./ramp.js";
 
@@ -332,4 +332,15 @@ test("an explicit anchor overrides selection entirely", () => {
   for (const stop of STOPS) {
     expect(rampColors("#ffffff", { anchor: stop }).anchor).toBe(stop);
   }
+});
+
+test("naturalStop reports the anchor an unforced ramp would pick", () => {
+  for (const input of ["#88c0d0", "#451dc7", "#ffffff", "#000000", "rebeccapurple"]) {
+    expect(naturalStop(input)).toBe(rampColors(input).anchor);
+  }
+});
+
+test("naturalStop guards its input the same way ramp() does", () => {
+  expect(() => naturalStop("not-a-color")).toThrow(/could not parse color/);
+  expect(() => naturalStop(null as never)).toThrow(/expected a color string/);
 });

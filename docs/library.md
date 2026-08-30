@@ -36,6 +36,24 @@ than building the ramp upside down: interpolation runs happily in either
 direction, so a reversed ramp is legible end to end and every contrast inside
 it still holds. It only looks wrong, everywhere, for a reason nothing points at.
 
+## `naturalStop(color)`
+
+The stop a color belongs to on its own, which is the anchor `ramp()` picks when
+you don't force one:
+
+```ts
+import { naturalStop } from "@shbernal/rampkit";
+
+naturalStop("#88C0D0"); // 300
+```
+
+Worth checking when your roles read fixed stops. Forcing an anchor far from a
+color's natural one is legal and quiet: the ramp is well-formed and the input
+sits exactly where you asked for it, but the short side gets crowded. `#88C0D0`
+pinned at `600` spends the whole light half on six pale cyans nobody can tell
+apart, and one of them is a card's stroke against another as its fill. Comparing
+the two numbers at authoring time is cheaper than counting swatches afterwards.
+
 ## `format(scale, format, options?)`
 
 Render a scale into an output format:
