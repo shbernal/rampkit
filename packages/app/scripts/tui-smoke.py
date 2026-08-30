@@ -5,8 +5,9 @@ WHAT THIS IS
     A *manual* sanity tool — NOT part of `bun test`. It launches the real TUI
     inside a pseudo-terminal (pty), types keystrokes, and asserts that the panes
     render and react. The deterministic logic (clamping, hue-wrap, notation
-    conversion, dial stepping) is covered by the fast, reliable unit tests in
-    `src/color-input.test.ts` and `src/ramp-options.test.ts`; this only checks
+    conversion, dial stepping, what fits a short terminal) is covered by the
+    fast, reliable unit tests in `src/color-input.test.ts`,
+    `src/ramp-options.test.ts` and `src/layout.test.ts`; this only checks
     the wiring the unit tests can't: that Ink actually draws the panes and that
     keys are routed to the right one.
 
@@ -31,15 +32,23 @@ USAGE
 Exits 0 if every scenario passes, 1 otherwise.
 """
 
+import fcntl
 import os
 import pty
 import re
 import select
+import struct
 import sys
+import termios
 import time
 
 # Per-keystroke settle time. Bump via env on slow machines (see header).
 DELAY = float(os.environ.get("RAMPKIT_SMOKE_DELAY", "0.3"))
+# Window size of the pty. A fresh one reports 0x0, which the TUI reads as "no
+# size known" — so it is set here, and every scenario says which it wants: the
+# frame collapses panes to fit, and what renders depends on the room it has.
+TALL = (45, 100)
+SHORT = (24, 80)
 APP_CWD = os.path.join(os.path.dirname(__file__), "..")
 
 # Key escape sequences.
@@ -51,13 +60,14 @@ SHIFT_TAB = b"\x1b[Z"
 ESC = b"\x1b"
 
 
-def render(keys):
+def render(keys, size=TALL):
     """Run the TUI, type `keys`, quit, and return the final frame as plain text."""
     pid, fd = pty.fork()
     if pid == 0:
         os.environ["TERM"] = "xterm-256color"
         os.chdir(APP_CWD)
         os.execvp("bun", ["bun", "run", "dev"])
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", size[0], size[1], 0, 0))
 
     buf = b""
 
@@ -95,8 +105,8 @@ def render(keys):
     return text
 
 
-def check(label, keys, *needles):
-    frame = render(keys)
+def check(label, keys, *needles, size=TALL):
+    frame = render(keys, size)
     missing = [n for n in needles if n not in frame]
     if missing:
         print(f"  FAIL  {label}")
@@ -136,6 +146,24 @@ def main():
     ok &= check("coarse dial covers ten steps", [b"#0ea5e9", SHIFT_TAB, TAB, RIGHT], "chroma 1.50")
     # Output pane: two Shift+Tabs, then ↓ cycles color syntax to rgb().
     ok &= check("output syntax switch (hex→rgb)", [b"#0ea5e9", SHIFT_TAB, SHIFT_TAB, DOWN], "output", "rgb(")
+    # On a terminal with no room for all three, the panes not focused collapse to
+    # a line: the scale is still drawn, the output block is down to its header.
+    ok &= check(
+        "short terminal collapses the panes not focused",
+        [b"#0ea5e9"],
+        "950",
+        "13 lines",
+        size=SHORT,
+    )
+    # And focus is what expands one again — from the output pane it is the scale
+    # that gives way, so the block itself is whole.
+    ok &= check(
+        "focus expands its pane on the same terminal",
+        [b"#0ea5e9", SHIFT_TAB, SHIFT_TAB],
+        "@theme {",
+        "--color-color-950",
+        size=SHORT,
+    )
 
     print()
     if ok:

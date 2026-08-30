@@ -53,6 +53,16 @@ below `lmax`.
 | **Enter**            | Copy the output to the clipboard                                                 |
 | **Esc** / **Ctrl-C** | Quit                                                                             |
 
+## Short terminals
+
+Drawn in full the interface needs about 40 rows — eleven stops, three bordered
+panes and an output block — so on a shorter one the panes you are _not_ in
+collapse to a single line each, enough to keep reading them: the input pane
+becomes its color and a strip of swatches (the anchor still marked), the output
+pane its format and how many lines **Enter** would copy. Focus is what expands a
+pane again, so **Shift+Tab** is how you get a collapsed one back. An 80×24
+terminal fits whichever pane you are working in, whole.
+
 ## Notes
 
 - **Clipboard** works locally (via `pbcopy`/`wl-copy`/`xclip`/`xsel`/`clip`) and

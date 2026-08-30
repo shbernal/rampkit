@@ -12,10 +12,13 @@
 //
 //   Enter copies the output; Escape/Ctrl-C quits. Swatch backgrounds are always
 //   hex (Ink can't paint oklch()/hsl()); label contrast reuses core's readableText.
+//
+//   On a terminal too short for all three (an 80×24 one is), the panes that are
+//   not focused collapse to a summary line — see layout.ts for which, and when.
 
 import { useState, useMemo, useEffect } from "react";
 import { spawn } from "node:child_process";
-import { render, Box, Text, useApp, useInput } from "ink";
+import { render, Box, Text, useApp, useInput, useStdout } from "ink";
 import TextInput from "ink-text-input";
 import {
   rampColors,
@@ -42,6 +45,7 @@ import {
   type Comps,
   type InputFormat,
 } from "./color-input";
+import { chromeRows, paneSizes, planPanes, PANES, type Pane } from "./layout.js";
 import {
   fieldText,
   stepField,
@@ -58,16 +62,13 @@ import { errorMessage } from "./fail.js";
 /** Width, in characters, of each swatch's color block. */
 const BAR_WIDTH = 18;
 
-/** Focus order, top to bottom — the order the panes are drawn in. */
-const PANES = ["input", "ramp", "output"] as const;
-type Pane = (typeof PANES)[number];
-
 /** Footer hint per pane. Shift+Tab names where it lands, so the cycle is
- *  discoverable without pressing it. */
+ *  discoverable without pressing it. Each fits an 80-column terminal unwrapped —
+ *  a second footer row is one the scale above does not get. */
 const HINTS: Record<Pane, string> = {
-  input: "↑↓: input notation · Tab: field · Shift+Tab: ramp pane · Enter: copy · Esc: quit",
-  ramp: "↑↓/←→: adjust ×1/×10 · Tab: field · Shift+Tab: output pane · Enter: copy · Esc: quit",
-  output: "↑↓: color syntax · Tab: output format · Shift+Tab: input pane · Enter: copy · Esc: quit",
+  input: "↑↓ notation · Tab field · Shift+Tab ramp · Enter copy · Esc quit",
+  ramp: "↑↓/←→ adjust ×1/×10 · Tab field · Shift+Tab output · Enter copy · Esc quit",
+  output: "↑↓ syntax · Tab format · Shift+Tab input · Enter copy · Esc quit",
 };
 
 /** Step through a list with wrap-around, in either direction. */
@@ -148,6 +149,28 @@ function copyToClipboard(text: string): Promise<void> {
   });
 }
 
+/** The terminal's size, kept current across resizes. Both are `undefined` when
+ *  there is no size to be had: stdout is not a TTY, or it is one that never had
+ *  its window size set — a bare pty reports 0×0, which is an unknown size and
+ *  not a terminal with no room in it. */
+function terminalSize(stdout: NodeJS.WriteStream | undefined): { rows?: number; columns?: number } {
+  return { rows: stdout?.rows || undefined, columns: stdout?.columns || undefined };
+}
+
+function useTerminalSize(): { rows?: number; columns?: number } {
+  const { stdout } = useStdout();
+  const [size, setSize] = useState(() => terminalSize(stdout));
+  useEffect(() => {
+    if (!stdout) return;
+    const onResize = () => setSize(terminalSize(stdout));
+    stdout.on("resize", onResize);
+    return () => {
+      stdout.off("resize", onResize);
+    };
+  }, [stdout]);
+  return size;
+}
+
 interface View {
   hexScale?: Ramp; // swatch backgrounds (always hex)
   labelScale?: Ramp; // values shown beside swatches, in the input notation
@@ -179,6 +202,7 @@ function App() {
 
   const [pane, setPane] = useState<Pane>("input");
   const [status, setStatus] = useState("");
+  const { rows, columns } = useTerminalSize();
 
   const valueFieldCount = inputFormat === "hex" ? 1 : 3;
   const fieldCount = valueFieldCount + 1; // value field(s) + name
@@ -291,110 +315,167 @@ function App() {
   const rampActive = pane === "ramp";
   const nameFocused = inputActive && fieldIndex === valueFieldCount;
 
+  // How much of each pane the terminal has room for. The counts are what this
+  // render has to draw; layout.ts turns them into rows and decides what fits.
+  const outputRows = output ? output.split("\n").length : 1;
+  const full = planPanes(
+    rows,
+    pane,
+    paneSizes({
+      scale: view.hexScale && view.labelScale ? STOPS.length : 0,
+      error: view.error || outputError ? 1 : 0,
+      output: outputRows,
+    }),
+    chromeRows(HINTS[pane], columns),
+  );
+
+  // The dial row, shared by the ramp pane's two renderings — the bordered one
+  // and, collapsed, the same row without it.
+  const rampFields = RAMP_FIELDS.map((field, i) => {
+    const focused = rampActive && i === rampIndex;
+    return (
+      <Box key={field} marginLeft={2}>
+        <Text dimColor={!focused} color={focused ? "cyan" : undefined}>
+          {field}{" "}
+        </Text>
+        <Text color={focused ? "cyan" : undefined} bold={focused}>
+          {fieldText(settings, field)}
+        </Text>
+      </Box>
+    );
+  });
+
   return (
     <Box flexDirection="column" paddingX={1}>
       <Box>
         <Text bold>rampkit</Text>
       </Box>
 
-      {/* Input pane */}
-      <Box flexDirection="column" borderStyle="round" borderColor={inputActive ? "cyan" : "gray"} paddingX={1}>
-        <Box>
+      {/* Input pane. Collapsed it keeps the color and its scale, as a strip of
+          one-character swatches with the anchor still marked. */}
+      {!full.input ? (
+        <Box paddingX={2}>
           <Text dimColor>input </Text>
-          <Text color="cyan">{inputFormat}</Text>
-          <Text dimColor> ↑↓ </Text>
-          {inputFormat === "hex" ? (
-            <TextInput
-              value={hexValue}
-              onChange={editHex}
-              focus={inputActive && fieldIndex === 0}
-              placeholder="#451dc7"
-            />
-          ) : (
-            <Box>
-              {([0, 1, 2] as const).map((i) => (
-                <Box key={i} marginRight={2}>
-                  <Text dimColor>{COMP_LABELS[inputFormat][i]} </Text>
-                  <TextInput
-                    value={comps[i]}
-                    onChange={setComp(i)}
-                    focus={inputActive && fieldIndex === i}
-                    placeholder="0"
-                  />
-                </Box>
-              ))}
+          <Text>{inputFormat} </Text>
+          <Text dimColor>{colorStr || "—"} </Text>
+          {name.trim() ? <Text dimColor>· {name.trim()} </Text> : null}
+          {view.hexScale &&
+            STOPS.map((stop) => {
+              const hex = view.hexScale![stop];
+              return (
+                <Text key={stop} backgroundColor={hex} color={readableText(hex)}>
+                  {stop === view.anchor ? "*" : " "}{" "}
+                </Text>
+              );
+            })}
+        </Box>
+      ) : (
+        <Box flexDirection="column" borderStyle="round" borderColor={inputActive ? "cyan" : "gray"} paddingX={1}>
+          <Box>
+            <Text dimColor>input </Text>
+            <Text color="cyan">{inputFormat}</Text>
+            <Text dimColor> ↑↓ </Text>
+            {inputFormat === "hex" ? (
+              <TextInput
+                value={hexValue}
+                onChange={editHex}
+                focus={inputActive && fieldIndex === 0}
+                placeholder="#451dc7"
+              />
+            ) : (
+              <Box>
+                {([0, 1, 2] as const).map((i) => (
+                  <Box key={i} marginRight={2}>
+                    <Text dimColor>{COMP_LABELS[inputFormat][i]} </Text>
+                    <TextInput
+                      value={comps[i]}
+                      onChange={setComp(i)}
+                      focus={inputActive && fieldIndex === i}
+                      placeholder="0"
+                    />
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </Box>
+          <Box marginBottom={1}>
+            <Text dimColor>name </Text>
+            <TextInput value={name} onChange={setName} focus={nameFocused} placeholder={DEFAULT_NAME} />
+          </Box>
+
+          {(view.error || outputError) && <Text color="red">⚠ {view.error || outputError}</Text>}
+
+          {view.hexScale && view.labelScale && (
+            <Box flexDirection="column">
+              {STOPS.map((stop) => {
+                const hex = view.hexScale![stop];
+                const label = view.labelScale![stop];
+                const isAnchor = stop === view.anchor;
+                return (
+                  <Box key={stop}>
+                    <Box width={2}>
+                      <Text color={hex}>{isAnchor ? "*" : " "}</Text>
+                    </Box>
+                    <Box width={4} justifyContent="flex-end" marginRight={1}>
+                      <Text color={isAnchor ? hex : undefined} dimColor={!isAnchor} bold={isAnchor}>
+                        {stop}
+                      </Text>
+                    </Box>
+                    <Text backgroundColor={hex} color={readableText(hex)}>
+                      {" ".repeat(BAR_WIDTH)}
+                    </Text>
+                    <Text> </Text>
+                    <Text color={isAnchor ? hex : undefined} bold={isAnchor}>
+                      {label}
+                    </Text>
+                  </Box>
+                );
+              })}
             </Box>
           )}
         </Box>
-        <Box marginBottom={1}>
-          <Text dimColor>name </Text>
-          <TextInput value={name} onChange={setName} focus={nameFocused} placeholder={DEFAULT_NAME} />
+      )}
+
+      {/* Ramp pane — the geometry `ramp()` takes, one dial per CLI flag. It is
+          one row either way; collapsed it loses only its border. */}
+      {!full.ramp ? (
+        <Box paddingX={2}>
+          <Text dimColor>ramp</Text>
+          {rampFields}
         </Box>
+      ) : (
+        <Box borderStyle="round" borderColor={rampActive ? "cyan" : "gray"} paddingX={1}>
+          <Text dimColor>ramp</Text>
+          {rampFields}
+        </Box>
+      )}
 
-        {(view.error || outputError) && <Text color="red">⚠ {view.error || outputError}</Text>}
-
-        {view.hexScale && view.labelScale && (
-          <Box flexDirection="column">
-            {STOPS.map((stop) => {
-              const hex = view.hexScale![stop];
-              const label = view.labelScale![stop];
-              const isAnchor = stop === view.anchor;
-              return (
-                <Box key={stop}>
-                  <Box width={2}>
-                    <Text color={hex}>{isAnchor ? "*" : " "}</Text>
-                  </Box>
-                  <Box width={4} justifyContent="flex-end" marginRight={1}>
-                    <Text color={isAnchor ? hex : undefined} dimColor={!isAnchor} bold={isAnchor}>
-                      {stop}
-                    </Text>
-                  </Box>
-                  <Text backgroundColor={hex} color={readableText(hex)}>
-                    {" ".repeat(BAR_WIDTH)}
-                  </Text>
-                  <Text> </Text>
-                  <Text color={isAnchor ? hex : undefined} bold={isAnchor}>
-                    {label}
-                  </Text>
-                </Box>
-              );
-            })}
-          </Box>
-        )}
-      </Box>
-
-      {/* Ramp pane — the geometry `ramp()` takes, one dial per CLI flag. */}
-      <Box borderStyle="round" borderColor={rampActive ? "cyan" : "gray"} paddingX={1}>
-        <Text dimColor>ramp</Text>
-        {RAMP_FIELDS.map((field, i) => {
-          const focused = rampActive && i === rampIndex;
-          return (
-            <Box key={field} marginLeft={2}>
-              <Text dimColor={!focused} color={focused ? "cyan" : undefined}>
-                {field}{" "}
-              </Text>
-              <Text color={focused ? "cyan" : undefined} bold={focused}>
-                {fieldText(settings, field)}
-              </Text>
-            </Box>
-          );
-        })}
-      </Box>
-
-      {/* Output pane */}
-      <Box flexDirection="column" borderStyle="round" borderColor={pane === "output" ? "cyan" : "gray"} paddingX={1}>
-        <Box>
+      {/* Output pane. Collapsed it names what Enter would copy, and how much. */}
+      {!full.output ? (
+        <Box paddingX={2}>
           <Text dimColor>output </Text>
-          <Text color="cyan">{outFormat}</Text>
+          <Text>{outFormat}</Text>
           <Text dimColor> · </Text>
-          <Text color="cyan">{outSpace}</Text>
+          <Text>{outSpace}</Text>
+          <Text dimColor> · {output ? `${outputRows} lines` : "—"}</Text>
         </Box>
-        {output ? <Text>{output}</Text> : <Text dimColor>—</Text>}
-      </Box>
+      ) : (
+        <Box flexDirection="column" borderStyle="round" borderColor={pane === "output" ? "cyan" : "gray"} paddingX={1}>
+          <Box>
+            <Text dimColor>output </Text>
+            <Text color="cyan">{outFormat}</Text>
+            <Text dimColor> · </Text>
+            <Text color="cyan">{outSpace}</Text>
+          </Box>
+          {output ? <Text>{output}</Text> : <Text dimColor>—</Text>}
+        </Box>
+      )}
 
       <Box flexDirection="column" marginTop={1}>
         <Text dimColor>{HINTS[pane]}</Text>
-        {status && <Text color={status.startsWith("⚠") ? "red" : "green"}>{status}</Text>}
+        {/* Drawn even while empty: a frame that grew by a row on copy would
+            undo the fit the layout was planned for. */}
+        <Text color={status.startsWith("⚠") ? "red" : "green"}>{status || " "}</Text>
       </Box>
     </Box>
   );

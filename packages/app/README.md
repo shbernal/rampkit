@@ -40,6 +40,9 @@ into three panes; **Shift+Tab** cycles focus through them.
 
 **Esc**/**Ctrl-C** quits.
 
+On a terminal too short for all three (an 80×24 one is), the panes you are not
+in collapse to a single summary line — **Shift+Tab** to one expands it again.
+
 ### Swatches are sRGB previews
 
 Terminals can only paint 24-bit sRGB (and many only 256 colors) — there is no

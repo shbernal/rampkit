@@ -34,6 +34,8 @@ This is a [bun](https://bun.sh) workspace monorepo.
     `hueShift`, `lMin`, `lMax`) as one table: the range each CLI flag accepts
     and how the TUI's ramp pane dials it. Both front ends read it, so a bound
     is never stated twice.
+  - `src/layout.ts` — what fits the terminal: the rows each pane costs drawn in
+    full or summarized to a line, and which ones collapse on a short one.
   - `src/version.ts` — the `--version` string, substituted at build time so
     the manifest is not inlined into the bundle.
   - `scripts/build.ts` — the bundler invocation behind `bun run build`.
@@ -46,7 +48,7 @@ Run from the repo root:
 ```bash
 bun install
 bun run build      # tsc build for core, bundled bin for app
-bun test           # unit suites (core ramp/format/ansi + app cli/color-input/ramp-options)
+bun test           # unit suites (core ramp/format/ansi + app cli/color-input/ramp-options/layout)
 bun run typecheck  # tsc --noEmit across packages (sources, suites and scripts)
 bun run dev        # run the app from source (TUI)
 bun run format     # oxfmt across the repo (--check in CI)
