@@ -110,12 +110,13 @@ def check(label, keys, *needles):
 def main():
     print(f"rampkit TUI smoke (delay={DELAY}s) — timing-sensitive, see header on failure\n")
     ok = True
+    # The notations cycle in COLOR_SPACES order: hex → rgb → hsl → oklch → hex.
     # Renders both panes; anchor stop is marked and the typed color is preserved.
     ok &= check("renders panes + marks anchor", [b"#0ea5e9"], "input hex", "output", "*", "#0ea5e9")
-    # ↓ re-expresses the same color in oklch (hex #0ea5e9 ≈ L 0.6847).
-    ok &= check("input notation switch (hex→oklch)", [b"#0ea5e9", DOWN], "input oklch", "L 0.6847")
+    # ↓ re-expresses the same color in rgb (hex #0ea5e9 = 14, 165, 233).
+    ok &= check("input notation switch (hex→rgb)", [b"#0ea5e9", DOWN], "input rgb", "R 14", "G 165", "B 233")
     # Out-of-range component snaps into range on Tab (999 → 255).
-    ok &= check("clamps on commit (R 999→255)", [DOWN, DOWN, b"999", TAB], "input rgb", "R 255")
+    ok &= check("clamps on commit (R 999→255)", [DOWN, b"999", TAB], "input rgb", "R 255")
     # Output pane: ↓ cycles color syntax to rgb().
     ok &= check("output syntax switch (hex→rgb)", [b"#0ea5e9", SHIFT_TAB, DOWN], "output", "rgb(")
 
