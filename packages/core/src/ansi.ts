@@ -1,28 +1,47 @@
 // Terminal preview — render a Ramp as 24-bit (truecolor) ANSI swatches.
 //
-// Shared by the CLI's `--preview` flag and the TUI, so a ramp looks identical
-// however it's surfaced. Pure string output, no terminal/IO dependencies.
+// Used by the CLI's `--preview` flag; the TUI paints its own blocks but shares
+// the foreground-contrast rule from here, so labels stay legible the same way in
+// both. Pure string output, no terminal/IO dependencies.
 
 import { rgb } from "culori";
+import type { Rgb } from "culori";
+import { STOPS } from "./ramp.js";
 import type { Ramp } from "./ramp.js";
 
 const RESET = "\x1b[0m";
+const BLACK = "#000000";
+const WHITE = "#ffffff";
 
-/** Undo the sRGB transfer function for one channel, giving linear light. */
-const lin = (v: number) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+/** Width of the color block, unless a ramp needs more room for its values. */
+const DEFAULT_BLOCK_WIDTH = 16;
 
-/** Choose black or white foreground for legibility on a given hex background,
- *  using the standard sRGB relative-luminance threshold. */
-export function readableText(hex: string): "#000000" | "#ffffff" {
-  const c = rgb(hex);
-  if (!c) return "#000000";
-  const luminance = 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
-  return luminance > 0.4 ? "#000000" : "#ffffff";
+/** Undo the sRGB transfer function for one channel, giving linear light.
+ *  0.04045 is the sRGB spec knee; WCAG's older 0.03928 gives the same answer
+ *  here, since no 8-bit channel value falls between the two. */
+const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+
+/** Relative luminance of an already-parsed color, so callers that have one
+ *  don't pay for a second parse. */
+const luminance = (c: Rgb): number => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+
+// Biased well above WCAG's ~0.179 crossover: on a terminal, black-on-mid-tone
+// reads better than white does, so mid-tones get black text. Tuned by eye, not
+// taken from a standard.
+const DARK_TEXT_ABOVE = 0.4;
+
+/**
+ * Choose a black or white foreground for legibility over a given background.
+ *
+ * @param color - Any CSS color string culori parses, including bare hex.
+ */
+export function readableText(color: string): typeof BLACK | typeof WHITE {
+  const c = rgb(color);
+  if (!c) return BLACK;
+  return luminance(c) > DARK_TEXT_ABOVE ? BLACK : WHITE;
 }
 
-function to255(hex: string): [number, number, number] {
-  const c = rgb(hex);
-  if (!c) return [0, 0, 0];
+function to255(c: Rgb): [number, number, number] {
   return [Math.round(c.r * 255), Math.round(c.g * 255), Math.round(c.b * 255)];
 }
 
@@ -35,7 +54,12 @@ function fg([r, g, b]: [number, number, number]): string {
 }
 
 export interface SwatchOptions {
-  /** Width of the color block in characters. Default 16. */
+  /**
+   * Minimum width of the color block, in characters. A block always grows to
+   * fit its value, and {@link swatches} widens every block to the widest value
+   * in the ramp so the column keeps a straight edge.
+   * @defaultValue 16
+   */
   blockWidth?: number;
 }
 
@@ -46,18 +70,33 @@ function center(text: string, width: number): string {
   return " ".repeat(left) + text + " ".repeat(width - text.length - left);
 }
 
-/** Render one ramp stop as a colored row: `<stop>  <color block showing its hex>`. */
-export function swatchLine(stop: number | string, hex: string, options: SwatchOptions = {}): string {
-  const blockWidth = options.blockWidth ?? 16;
+/**
+ * Render one ramp stop as a colored row: `<stop>  <color block showing its value>`.
+ *
+ * @param stop - The stop number (or any label) shown at the left.
+ * @param value - The stop's color, in any syntax culori parses.
+ * @param options - See {@link SwatchOptions}.
+ */
+export function swatchLine(stop: number | string, value: string, options: SwatchOptions = {}): string {
   const label = String(stop).padStart(4, " ");
-  const inner = center(hex, blockWidth);
-  const block = `${bg(to255(hex))}${fg(to255(readableText(hex)))}${inner}${RESET}`;
-  return `${label}  ${block}`;
+  const inner = center(value, options.blockWidth ?? DEFAULT_BLOCK_WIDTH);
+
+  // One parse feeds both the background and the contrast decision.
+  const c = rgb(value);
+  const back: [number, number, number] = c ? to255(c) : [0, 0, 0];
+  const front: [number, number, number] = !c || luminance(c) > DARK_TEXT_ABOVE ? [0, 0, 0] : [255, 255, 255];
+
+  return `${label}  ${bg(back)}${fg(front)}${inner}${RESET}`;
 }
 
-/** Render a full ramp as a block of truecolor swatch lines (lightest → darkest). */
+/**
+ * Render a full ramp as a block of truecolor swatch lines (lightest → darkest).
+ *
+ * Every block is widened to the ramp's longest value, so a preview in a verbose
+ * syntax like `oklch()` still lines up.
+ */
 export function swatches(ramp: Ramp, options: SwatchOptions = {}): string {
-  return Object.entries(ramp)
-    .map(([stop, hex]) => swatchLine(stop, hex, options))
-    .join("\n");
+  const values = STOPS.map((stop) => ramp[stop]);
+  const blockWidth = Math.max(options.blockWidth ?? DEFAULT_BLOCK_WIDTH, ...values.map((v) => v.length));
+  return STOPS.map((stop, i) => swatchLine(stop, values[i]!, { blockWidth })).join("\n");
 }
