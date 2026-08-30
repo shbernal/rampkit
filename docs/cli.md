@@ -19,13 +19,23 @@ rampkit --help
 
 ## Flags
 
-| Flag           | Description                                                                       |
-| -------------- | --------------------------------------------------------------------------------- |
-| `-f, --format` | Output format: `tailwind-v4`, `css-vars`, `tailwind-config`, `json`, `hex-array`. |
-| `-n, --name`   | Token name used in the emitted output.                                            |
-| `--color`      | Value syntax for each stop: `hex`, `rgb`, `hsl`, `oklch`.                         |
-| `--preview`    | Print color swatches (to **stderr**).                                             |
-| `--help`       | Show usage.                                                                       |
+| Flag            | Description                                                                           |
+| --------------- | ------------------------------------------------------------------------------------- |
+| `-f, --format`  | Output format: `tailwind-v4`, `css-vars`, `tailwind-config`, `json`, `hex-array`.     |
+| `-n, --name`    | Token name used in the emitted output. A CSS ident; unused by `json` and `hex-array`. |
+| `--color`       | Value syntax for each stop: `hex`, `rgb`, `hsl`, `oklch`.                             |
+| `-a, --anchor`  | Force the stop the input is preserved at: one of `50`…`950`.                          |
+| `-c, --chroma`  | Global chroma multiplier, `0`–`10` (default `1`).                                     |
+| `--hue-shift`   | Degrees of hue drift across the ramp (default `0`). Negative values need `=`.         |
+| `--lmin`        | OKLCH lightness at the dark end, `0`–`1` (default `0.18`).                            |
+| `--lmax`        | OKLCH lightness at the light end, `0`–`1` (default `0.995`).                          |
+| `-p, --preview` | Print color swatches (to **stderr**).                                                 |
+| `-h, --help`    | Show usage.                                                                           |
+| `-v, --version` | Show the version.                                                                     |
+
+A rejected flag value names the flag and exits non-zero; nothing is written to
+stdout. `--hue-shift -720` is read by the argument parser as another option, so
+pass negative values as `--hue-shift=-720`.
 
 ## stdout / stderr contract
 

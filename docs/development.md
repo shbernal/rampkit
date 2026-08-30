@@ -40,6 +40,14 @@ The library is **ESM-only** — no CommonJS.
 - CLI contract: data → **stdout**; `--preview` swatches and diagnostics →
   **stderr**.
 
+## Adding an output format
+
+`FORMATS` in `packages/core/src/format.ts` is the source of truth — the `Format`
+type derives from it, and the CLI and TUI menus read it. The `--help` text is
+generated from it too. Prose copies of the list are not, so a new format also
+needs a line in `docs/cli.md`, `docs/tui.md` and `packages/app/README.md`.
+Same shape for `COLOR_SPACES` in `packages/core/src/ramp.ts`.
+
 ## Publishing
 
 Both packages are published with **`bun publish`** (not `npm publish`): the app
