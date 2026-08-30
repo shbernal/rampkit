@@ -30,6 +30,10 @@ This is a [bun](https://bun.sh) workspace monorepo.
   - `src/tui.tsx` — interactive [Ink](https://github.com/vadimdemedes/ink) React TUI.
   - `src/color-input.ts` — pure logic for the TUI input pane (notation
     conversion, range clamping); unit-tested in `src/color-input.test.ts`.
+  - `src/ramp-options.ts` — the geometry options (`anchor`, `chroma`,
+    `hueShift`, `lMin`, `lMax`) as one table: the range each CLI flag accepts
+    and how the TUI's ramp pane dials it. Both front ends read it, so a bound
+    is never stated twice.
   - `src/version.ts` — the `--version` string, substituted at build time so
     the manifest is not inlined into the bundle.
   - `scripts/build.ts` — the bundler invocation behind `bun run build`.
@@ -42,7 +46,7 @@ Run from the repo root:
 ```bash
 bun install
 bun run build      # tsc build for core, bundled bin for app
-bun test           # unit suites (core ramp/format/ansi + app cli/color-input)
+bun test           # unit suites (core ramp/format/ansi + app cli/color-input/ramp-options)
 bun run typecheck  # tsc --noEmit across packages (sources, suites and scripts)
 bun run dev        # run the app from source (TUI)
 bun run format     # oxfmt across the repo (--check in CI)

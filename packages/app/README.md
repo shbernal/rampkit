@@ -25,12 +25,15 @@ Output goes to stdout (clean for piping); `--preview` swatches go to stderr.
 ## TUI
 
 Run `rampkit` with no arguments in an interactive terminal. The screen splits
-into two panes; **Shift+Tab** moves focus between them.
+into three panes; **Shift+Tab** cycles focus through them.
 
 - **Input** — **↑/↓** cycle the input notation (`hex`/`oklch`/`rgb`/`hsl`),
   re-expressing the same color; **Tab** cycles the value field(s) then the token
   name. The scale lists each stop's value beside its swatch and marks the
   preserved input with `*`.
+- **Ramp** — the same geometry the flags set (`anchor`, `chroma`, `hue-shift`,
+  `lmin`, `lmax`). **Tab** moves between them, **↑/↓** adjust the focused one:
+  up for more, and for the anchor, one stop up the scale above.
 - **Output** — **↑/↓** cycle the output color syntax, **Tab** cycles the output
   format. **Enter** copies the result to the clipboard (works over SSH).
 

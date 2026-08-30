@@ -15,6 +15,8 @@ rampkit is a [bun](https://bun.sh) workspace monorepo.
   - `src/cli.ts` — argument parsing, stdin/stdout handling.
   - `src/tui.tsx` — interactive [Ink](https://github.com/vadimdemedes/ink) TUI.
   - `src/color-input.ts` — pure input-pane logic (notation conversion, clamping).
+  - `src/ramp-options.ts` — the geometry options as one table: the CLI's flag
+    bounds and the ramp pane's dials.
   - `src/version.ts` — the `--version` string; see _Versioning_ below.
   - `scripts/build.ts` — the bundler invocation behind `bun run build`.
 
@@ -25,7 +27,7 @@ Run from the repo root:
 ```bash
 bun install
 bun run build      # tsc build for the lib, bundled bin for the app
-bun test           # unit suites (core ramp/format/ansi + app cli/color-input)
+bun test           # unit suites (core ramp/format/ansi + app cli/color-input/ramp-options)
 bun run typecheck  # tsc --noEmit across packages, sources and suites alike
 bun run dev        # run the app from source (TUI)
 bun run format     # oxfmt across the repo (--check in CI)

@@ -7,8 +7,8 @@ interactive TUI.
 
 ## Layout
 
-The interface splits into two focusable panes — press **Shift+Tab** to switch
-focus between them.
+The interface splits into three focusable panes — press **Shift+Tab** to cycle
+focus through them (input → ramp → output).
 
 ### Input pane
 
@@ -18,6 +18,21 @@ focus between them.
 - The scale lists each stop's value (in the input notation) beside its swatch;
   the anchor stop (your exact input) is marked with `*`.
 
+### Ramp pane
+
+The geometry `ramp()` is built from — the same five values the CLI takes as
+flags, so a ramp dialled in here is reproducible as a one-liner.
+
+- **Tab** — move between `anchor`, `chroma`, `hue-shift`, `lmin` and `lmax`.
+- **↑/↓** — adjust the focused one. **↑** is always "more": more chroma, more
+  drift, a higher lightness end. For `anchor` it is one stop _up_ the scale
+  drawn above, so the arrow and the `*` move together; past stop 50 it reaches
+  `auto`, where the stop is picked from the input's own lightness.
+
+`hue-shift` wraps at half a turn; everything else stops at its limit. The two
+lightness ends stop one step short of each other, since a ramp needs `lmin`
+below `lmax`.
+
 ### Output pane
 
 - **↑/↓** — cycle the output color syntax (`hex` / `rgb` / `hsl` / `oklch`).
@@ -26,13 +41,13 @@ focus between them.
 
 ## Keys
 
-| Key                  | Action                                                          |
-| -------------------- | --------------------------------------------------------------- |
-| **Shift+Tab**        | Switch focus between input / output pane                        |
-| **↑/↓**              | Cycle input notation (input pane) / output syntax (output pane) |
-| **Tab**              | Cycle fields (input pane) / output format (output pane)         |
-| **Enter**            | Copy the output to the clipboard                                |
-| **Esc** / **Ctrl-C** | Quit                                                            |
+| Key                  | Action                                                                           |
+| -------------------- | -------------------------------------------------------------------------------- |
+| **Shift+Tab**        | Cycle focus: input → ramp → output                                               |
+| **↑/↓**              | Input notation (input) / adjust the focused dial (ramp) / output syntax (output) |
+| **Tab**              | Cycle fields (input, ramp) / output format (output)                              |
+| **Enter**            | Copy the output to the clipboard                                                 |
+| **Esc** / **Ctrl-C** | Quit                                                                             |
 
 ## Notes
 
