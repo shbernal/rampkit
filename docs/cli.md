@@ -14,6 +14,7 @@ rampkit rebeccapurple -f css-vars -n brand  # another format, another token name
 rampkit '#0ea5e9' --color oklch -f css-vars # emit oklch() values
 rampkit '#0ea5e9' -f json --preview         # JSON to stdout, swatches to stderr
 echo '#0ea5e9' | rampkit -f hex-array       # read the color from stdin
+rampkit '#4c566a' -a 600 --light '#eceff4' --dark '#2e3440'  # pin both ends
 rampkit --help
 ```
 
@@ -29,6 +30,8 @@ rampkit --help
 | `--hue-shift`   | Degrees of hue drift across the ramp (default `0`). Negative values need `=`.         |
 | `--lmin`        | OKLCH lightness at the dark end, `0` to `1` (default `0.18`).                         |
 | `--lmax`        | OKLCH lightness at the light end, `0` to `1` (default `0.995`).                       |
+| `--light`       | Pin stop `50` to this exact color, any CSS color. Overrides `--lmax`.                 |
+| `--dark`        | Pin stop `950` to this exact color. Overrides `--lmin`.                               |
 | `-p, --preview` | Print color swatches to stderr.                                                       |
 | `-h, --help`    | Show usage.                                                                           |
 | `-v, --version` | Show the version.                                                                     |

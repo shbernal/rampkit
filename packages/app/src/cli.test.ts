@@ -131,6 +131,34 @@ test("accepts the numeric flags it should", async () => {
   expect(code).toBe(0);
 });
 
+test("--light and --dark pin the ends to exact colors", async () => {
+  const { code, out } = await cli([
+    "#4c566a",
+    "-a",
+    "600",
+    "--light",
+    "#eceff4",
+    "--dark",
+    "#2e3440",
+    "-f",
+    "hex-array",
+  ]);
+  expect(code).toBe(0);
+  const hexes = JSON.parse(out);
+  expect(hexes[0]).toBe("#eceff4");
+  expect(hexes.at(-1)).toBe("#2e3440");
+});
+
+test("a rejected pinned end names the flag's color, not the input", async () => {
+  const unparseable = await cli(["#4c566a", "--light", "nope"]);
+  expect(unparseable.code).toBe(1);
+  expect(unparseable.err).toContain('could not parse light color "nope"');
+
+  const inverted = await cli(["#4c566a", "--dark", "#ffffff"]);
+  expect(inverted.code).toBe(1);
+  expect(inverted.err).toContain("must be darker than the input");
+});
+
 test("surfaces an unparseable color and an invalid token name", async () => {
   const color = await cli(["not-a-color"]);
   expect(color.code).toBe(1);

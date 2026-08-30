@@ -36,6 +36,32 @@ than building the ramp upside down: interpolation runs happily in either
 direction, so a reversed ramp is legible end to end and every contrast inside
 it still holds. It only looks wrong, everywhere, for a reason nothing points at.
 
+## Pinning the ends to colors
+
+`lMin` and `lMax` steer the ends by OKLCH lightness. When you already have the
+colors those ends should be — a scheme's page background, its lightest surface —
+`light` and `dark` pin them instead:
+
+```ts
+ramp("#4C566A", { anchor: 600, light: "#ECEFF4", dark: "#2E3440" });
+// 50: "#eceff4"  ← Snow Storm, exactly
+// 600: "#4c566a" ← nord3, the anchor
+// 950: "#2e3440" ← Polar Night, exactly
+```
+
+Three points of the ramp are fixed rather than one, which is what a ramp drawn
+out of an existing scheme needs: those tones are the ones people recognize, and
+more than one of them has to survive into a stop a consumer reads. The stops
+between a pinned end and the anchor interpolate lightness, chroma and hue in
+OKLCH, so a pale card stays quietly in its hue instead of washing toward grey
+the way an sRGB mix does. In the ramp above, nord2 and nord1 land on `700` and
+`800` without being asked for.
+
+A pinned end takes over its half: it overrides `lMax` (or `lMin`) and leaves
+`chroma` and `hueShift` nothing to shape there, since it states its own. It has
+to be lighter (or darker) than the input, and it cannot share a stop with the
+anchor — `{ anchor: 50, light }` throws rather than picking a winner.
+
 ## `naturalStop(color)`
 
 The stop a color belongs to on its own, which is the anchor `ramp()` picks when

@@ -11,6 +11,9 @@
 //      (stops 0 and 1000 are virtual bookends so the real 50/950 ends stay off
 //      pure white/black. An input lighter than lMax or darker than lMin widens
 //      the bookend it sits past, so the ramp compresses instead of inverting.)
+//      An end given as a color instead (`light`/`dark`) replaces its bookend and
+//      lands on the real stop, 50 or 950, so that side interpolates lightness,
+//      chroma and hue from a stated color rather than from a lightness alone.
 //   4. Keep the input hue (optional per-stop drift) and chroma (optional global
 //      multiplier), then gamut-map each stop into sRGB by reducing chroma —
 //      which naturally tapers saturation at the light and dark extremes. The
@@ -139,8 +142,34 @@ export interface RampOptions extends SerializeOptions {
    */
   anchor?: Stop;
   /**
+   * Pin stop 50 to this exact color, instead of deriving the light end from
+   * `lMax`. Any CSS color string; it is gamut-mapped like every other stop, and
+   * the stops between it and the anchor interpolate lightness, chroma and hue
+   * between the two in OKLCH.
+   *
+   * For a ramp drawn out of an existing scheme — an editor theme, a brand guide
+   * — where the light end is a tone people recognize and has to survive into
+   * the ramp exactly, not near enough to read as it.
+   *
+   * Overrides `lMax`, and takes over `chroma` and `hueShift` on the light half:
+   * a stated end states its own chroma and hue, so there is nothing left for
+   * those to shape. Must be lighter than the input, and cannot be combined with
+   * `anchor: 50`, which pins the same stop.
+   * @defaultValue derived from `lMax`
+   */
+  light?: string;
+  /**
+   * Pin stop 950 to this exact color, instead of deriving the dark end from
+   * `lMin`. The mirror of {@link RampOptions.light}: it overrides `lMin`, takes
+   * over `chroma` and `hueShift` on the dark half, must be darker than the
+   * input, and cannot be combined with `anchor: 950`.
+   * @defaultValue derived from `lMin`
+   */
+  dark?: string;
+  /**
    * OKLCH lightness at the virtual stop 0 (near white). Widened automatically
-   * when the input is lighter than this, so the ramp never inverts.
+   * when the input is lighter than this, so the ramp never inverts. Ignored
+   * when `light` pins the end to a color.
    *
    * Must be above `lMin`. The pair are not swapped when they arrive backwards:
    * `lerp` runs happily in either direction, so a reversed ramp is legible end
@@ -152,7 +181,7 @@ export interface RampOptions extends SerializeOptions {
   /**
    * OKLCH lightness at the virtual stop 1000 (near black). Widened
    * automatically when the input is darker than this, so the ramp never
-   * inverts.
+   * inverts. Ignored when `dark` pins the end to a color.
    *
    * Must be below `lMax`; see {@link RampOptions.lMax}.
    * @defaultValue 0.18
@@ -189,15 +218,16 @@ export interface RampResult {
  * `#000000`, a well-formed ramp nothing downstream has a reason to reject.
  * `null` gets past it too, and throws from inside culori in culori's words.
  *
+ * @param what - Names the value in the error, for options that also take colors.
  * @throws TypeError if `input` is not a string; Error if it is a string culori
  *   cannot parse.
  */
-function parseColor(input: string): Oklch {
+function parseColor(input: string, what = "color"): Oklch {
   if (typeof input !== "string") {
-    throw new TypeError(`rampkit: expected a color string, got ${input === null ? "null" : typeof input}`);
+    throw new TypeError(`rampkit: expected a ${what} string, got ${input === null ? "null" : typeof input}`);
   }
   const parsed = oklch(input);
-  if (!parsed) throw new Error(`rampkit: could not parse color "${input}"`);
+  if (!parsed) throw new Error(`rampkit: could not parse ${what} "${input}"`);
   return parsed;
 }
 
@@ -253,6 +283,33 @@ export function naturalStop(input: string): Stop {
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
+/** The real ends of the scale, which is where a pinned `light`/`dark` lands —
+ *  unlike `lMin`/`lMax`, which steer the virtual stops 0 and 1000 beyond them. */
+const FIRST: Stop = STOPS[0];
+const LAST: Stop = STOPS[STOPS.length - 1]!;
+
+/** Interpolate a hue the short way round the circle, so a pinned end sitting 10°
+ *  across the 0/360 seam does not drag the ramp 350° through every other hue. */
+const hueLerp = (a: number, b: number, t: number): number => {
+  const delta = ((((b - a) % 360) + 540) % 360) - 180;
+  return a + delta * t;
+};
+
+/** How far a stop sits from its pinned end toward the anchor: 0 at the pinned
+ *  stop, 1 at the anchor. Linear in the stop number, like the derived sides. */
+const pinT = (stop: Stop, anchor: Stop, light: boolean): number =>
+  light ? (stop - FIRST) / (anchor - FIRST) : (LAST - stop) / (LAST - anchor);
+
+/** OKLCH interpolation from a pinned end toward the input color. An achromatic
+ *  end has no hue of its own, so it borrows the input's rather than swinging the
+ *  ramp toward hue 0. */
+const interpolate = (end: Oklch, base: { l: number; c: number; h: number }, t: number): Color => ({
+  mode: "oklch",
+  l: lerp(end.l, base.l, t),
+  c: lerp(end.c, base.c, t),
+  h: hueLerp(end.h ?? base.h, base.h, t),
+});
+
 /**
  * Compute a ramp without rendering it — the gamut-mapped OKLCH color at every
  * stop, plus the anchor that was resolved for it.
@@ -306,24 +363,49 @@ export function rampColors(input: string, options: RampOptions = {}): RampResult
     throw new Error(`rampkit: anchor must be one of ${STOPS.join(", ")}, got ${anchor}`);
   }
 
+  // A pinned end is a real stop, not a bookend: it lands on 50 or 950 rather than
+  // steering a virtual 0/1000, so the color a caller states is the color that
+  // comes out. Three points of the ramp are then fixed instead of one, which is
+  // what a scheme with its own background, foreground and accent needs.
+  const light = options.light === undefined ? undefined : parseColor(options.light, "light color");
+  const dark = options.dark === undefined ? undefined : parseColor(options.dark, "dark color");
+  if (light && anchor === STOPS[0]) throw new Error(`rampkit: light and anchor ${anchor} both pin stop ${anchor}`);
+  if (dark && anchor === LAST) throw new Error(`rampkit: dark and anchor ${anchor} both pin stop ${anchor}`);
+  // Left unchecked these invert the ramp on one side, which is the failure with
+  // no symptom: still legible, still monotonic in contrast, simply upside down.
+  if (light && light.l <= baseL) {
+    throw new Error(`rampkit: light (L ${sig(light.l)}) must be lighter than the input (L ${sig(baseL)})`);
+  }
+  if (dark && dark.l >= baseL) {
+    throw new Error(`rampkit: dark (L ${sig(dark.l)}) must be darker than the input (L ${sig(baseL)})`);
+  }
+
   const colors = {} as Record<Stop, Color>;
   for (const stop of STOPS) {
     // The anchor keeps the input's own lightness, chroma and hue untouched; it
     // still goes through the gamut map, which is a no-op for in-gamut input and
     // keeps an out-of-gamut input consistent with its neighbours.
     const isAnchor = stop === anchor;
+    // A pinned end owns its whole side: lightness, chroma and hue all run from
+    // the stated color to the input, so the end arrives exactly and the stops
+    // between it and the anchor are a straight OKLCH interpolation.
+    const pin = isAnchor ? undefined : stop < anchor ? light : dark;
 
-    const l = isAnchor
-      ? baseL
-      : stop < anchor
-        ? lerp(lMax, baseL, stop / anchor)
-        : lerp(baseL, lMin, (stop - anchor) / (1000 - anchor));
-
-    const dist = (stop - anchor) / 1000;
-    const h = baseH + hueShift * dist;
-    const c = isAnchor ? baseC : baseC * chromaMul;
-
-    colors[stop] = clampChroma({ mode: "oklch", l, c, h }, "oklch");
+    colors[stop] = clampChroma(
+      pin
+        ? interpolate(pin, { l: baseL, c: baseC, h: baseH }, pinT(stop, anchor, stop < anchor))
+        : {
+            mode: "oklch",
+            l: isAnchor
+              ? baseL
+              : stop < anchor
+                ? lerp(lMax, baseL, stop / anchor)
+                : lerp(baseL, lMin, (stop - anchor) / (1000 - anchor)),
+            c: isAnchor ? baseC : baseC * chromaMul,
+            h: baseH + hueShift * ((stop - anchor) / 1000),
+          },
+      "oklch",
+    );
   }
   return { anchor, colors };
 }

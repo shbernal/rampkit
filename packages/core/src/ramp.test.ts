@@ -344,3 +344,56 @@ test("naturalStop guards its input the same way ramp() does", () => {
   expect(() => naturalStop("not-a-color")).toThrow(/could not parse color/);
   expect(() => naturalStop(null as never)).toThrow(/expected a color string/);
 });
+
+test("pins an end to a color, exactly, at the real stop", () => {
+  const scale = ramp("#88c0d0", { light: "#ffffff", dark: "#111111" });
+  expect(scale[50]).toBe("#ffffff");
+  expect(scale[950]).toBe("#111111");
+  expect(Object.values(scale)).toContain("#88c0d0");
+  expectMonotonic(scale);
+});
+
+// The case the option exists for: a neutral ramp out of Nord, three of the
+// scheme's own tones pinned rather than one kept and the rest approximated.
+test("a pinned pair carries a scheme's own tones into the stops between", () => {
+  const scale = ramp("#4c566a", { anchor: 600, light: "#eceff4", dark: "#2e3440" });
+  expect(scale[50]).toBe("#eceff4"); // Snow Storm
+  expect(scale[600]).toBe("#4c566a"); // nord3, the anchor
+  expect(scale[950]).toBe("#2e3440"); // Polar Night
+  expect(scale[700]).toBe("#434c5e"); // nord2, landing on a stop unasked
+  expect(scale[800]).toBe("#3b4252"); // nord1
+  expectMonotonic(scale);
+});
+
+test("a pinned end is interpolated in OKLCH, not toward grey", () => {
+  const pinned = ramp("#0ea5e9", { light: "#fff8f0" });
+  // Chroma runs from the pinned end to the input rather than collapsing: every
+  // stop between them keeps more of the hue than a straight sRGB mix would.
+  const chromas = STOPS.filter((s) => s < 500).map((s) => oklch(pinned[s])!.c);
+  for (let i = 1; i < chromas.length; i++) expect(chromas[i]!).toBeGreaterThan(chromas[i - 1]!);
+});
+
+test("a pinned end takes the short way round the hue circle", () => {
+  // Pinned end at hue ~20°, input at ~340°: the 40° arc, not the 320° one.
+  const scale = ramp("oklch(0.5 0.15 340)", { light: "oklch(0.97 0.03 20)" });
+  for (const stop of STOPS.filter((s) => s < 500)) {
+    const h = oklch(scale[stop])!.h ?? 0;
+    expect(h >= 340 || h <= 20).toBe(true);
+  }
+});
+
+test("rejects a pinned end that would invert the ramp", () => {
+  expect(() => ramp("#4c566a", { light: "#000000" })).toThrow(/light \(L .*\) must be lighter/);
+  expect(() => ramp("#4c566a", { dark: "#ffffff" })).toThrow(/dark \(L .*\) must be darker/);
+});
+
+test("rejects a pinned end that fights the anchor for the same stop", () => {
+  expect(() => ramp("#4c566a", { anchor: 50, light: "#eceff4" })).toThrow(/both pin stop 50/);
+  expect(() => ramp("#4c566a", { anchor: 950, dark: "#2e3440" })).toThrow(/both pin stop 950/);
+  expect(() => ramp("#4c566a", { anchor: 50, dark: "#2e3440" })).not.toThrow();
+});
+
+test("guards a pinned end's own input the way it guards the color", () => {
+  expect(() => ramp("#4c566a", { light: "not-a-color" })).toThrow(/could not parse light color/);
+  expect(() => ramp("#4c566a", { dark: 5 as never })).toThrow(/expected a dark color string/);
+});

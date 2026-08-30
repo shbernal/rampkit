@@ -58,6 +58,8 @@ Options:
       --hue-shift <d>  Degrees of hue drift across the ramp (default: ${RAMP_DEFAULTS.hueShift})
       --lmin <l>       OKLCH lightness at the dark end, 0..1 (default: ${RAMP_DEFAULTS.lMin})
       --lmax <l>       OKLCH lightness at the light end, 0..1 (default: ${RAMP_DEFAULTS.lMax})
+      --light <color>  Pin stop 50 to this exact color (overrides --lmax)
+      --dark <color>   Pin stop 950 to this exact color (overrides --lmin)
   -p, --preview        Also print truecolor swatches (to stderr)
   -h, --help           Show this help
   -v, --version        Show version
@@ -66,7 +68,8 @@ Examples:
   rampkit '#451dc7'
   rampkit rebeccapurple --format css-vars --name brand
   rampkit '#0ea5e9' -f json --preview
-  rampkit '#0ea5e9' --color oklch -f css-vars`;
+  rampkit '#0ea5e9' --color oklch -f css-vars
+  rampkit '#4c566a' -a 600 --light '#eceff4' --dark '#2e3440'`;
 
 /** The flags parseArgs accepts. Exported so the suite can hold HELP to it: a
  *  flag added here without a line in the help text is a documentation bug. */
@@ -79,6 +82,8 @@ export const OPTIONS = {
   "hue-shift": { type: "string" },
   lmin: { type: "string" },
   lmax: { type: "string" },
+  light: { type: "string" },
+  dark: { type: "string" },
   preview: { type: "boolean", short: "p" },
   help: { type: "boolean", short: "h" },
   version: { type: "boolean", short: "v" },
@@ -159,6 +164,12 @@ async function run(argv: string[], version: string, io: CliIo): Promise<number> 
     const value = num(flag, values[flag], min, max);
     if (value !== undefined) options[key] = value;
   }
+  // Colors, not numbers, so they skip the NUMERIC table; core parses and range-
+  // checks them against the input, which is the only thing they can be wrong
+  // relative to.
+  if (values.light !== undefined) options.light = values.light;
+  if (values.dark !== undefined) options.dark = values.dark;
+
   // Needs both, so it does not fit the table above.
   const { lMin, lMax } = options;
   if (lMin !== undefined && lMax !== undefined && lMin >= lMax) {
