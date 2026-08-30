@@ -1,4 +1,5 @@
 import { test, expect } from "bun:test";
+import { COLOR_SPACES } from "@shbernal/rampkit";
 import { rgb } from "culori";
 import { buildColor, clampNum, clampText, toComps, COMP_RANGES, COMPONENT_FORMATS, COMP_LABELS } from "./color-input";
 
@@ -82,7 +83,8 @@ test("toComps returns blanks for an unparseable color", () => {
 // Tables stay aligned across notations.
 
 test("every component notation has three component labels and ranges", () => {
-  expect(COMPONENT_FORMATS).toEqual(["oklch", "rgb", "hsl"]);
+  // Every non-hex color space core can emit is typeable here, whatever the order.
+  expect([...COMPONENT_FORMATS].toSorted()).toEqual(COLOR_SPACES.filter((s) => s !== "hex").toSorted());
   for (const fmt of COMPONENT_FORMATS) {
     expect(COMP_LABELS[fmt]).toHaveLength(3);
     expect(COMP_RANGES[fmt]).toHaveLength(3);

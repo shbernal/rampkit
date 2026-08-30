@@ -5,15 +5,21 @@
 // over these functions.
 
 import { oklch, rgb, hsl } from "culori";
+import { COLOR_SPACES } from "@shbernal/rampkit";
+import type { ColorSpace } from "@shbernal/rampkit";
 
 // Input notations the color can be entered in. `hex` is a single free-text field
 // (and accepts any CSS color string); the rest are three numeric components.
-export const INPUT_FORMATS = ["hex", "oklch", "rgb", "hsl"] as const;
-export type InputFormat = (typeof INPUT_FORMATS)[number];
+//
+// The set is core's color spaces, since a value typed here is handed straight
+// back to serializeRamp as one — a space added there has to grow fields here.
+// `hex` leads: it is the free-text field and the notation most inputs arrive in.
+export const INPUT_FORMATS = ["hex", ...COLOR_SPACES.filter((s) => s !== "hex")] as const;
+export type InputFormat = ColorSpace;
 
 /** The notations made of three numeric fields — everything except `hex`. The
  *  component maps below are keyed on this, so `hex` cannot reach them. */
-export type ComponentFormat = Exclude<InputFormat, "hex">;
+export type ComponentFormat = Exclude<ColorSpace, "hex">;
 export const COMPONENT_FORMATS = INPUT_FORMATS.filter((f): f is ComponentFormat => f !== "hex");
 
 export const COMP_LABELS: Record<ComponentFormat, [string, string, string]> = {

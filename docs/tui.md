@@ -12,7 +12,7 @@ focus between them.
 
 ### Input pane
 
-- **↑/↓** — cycle the input notation (`hex` / `oklch` / `rgb` / `hsl`),
+- **↑/↓** — cycle the input notation (`hex` / `rgb` / `hsl` / `oklch`),
   re-expressing the _same_ color in each.
 - **Tab** — cycle the value field(s) → the token name field → back.
 - The scale lists each stop's value (in the input notation) beside its swatch;
