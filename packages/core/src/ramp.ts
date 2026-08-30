@@ -22,7 +22,7 @@
 // alongside the Tailwind families without tracking their exact curve.
 
 import { oklch, formatHex, formatRgb, formatHsl, clampChroma } from "culori";
-import type { Color } from "culori";
+import type { Color, Oklch } from "culori";
 
 export const STOPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as const;
 export type Stop = (typeof STOPS)[number];
@@ -172,6 +172,27 @@ export interface RampResult {
 }
 
 /**
+ * Parse a color string into OKLCH, rejecting anything else before culori sees it.
+ *
+ * The type test has to come first. `oklch()` returns a truthy object for a plain
+ * object or an array, so a `!base` check alone lets those through with an
+ * undefined lightness — every stop then interpolates to NaN and renders
+ * `#000000`, a well-formed ramp nothing downstream has a reason to reject.
+ * `null` gets past it too, and throws from inside culori in culori's words.
+ *
+ * @throws TypeError if `input` is not a string; Error if it is a string culori
+ *   cannot parse.
+ */
+function parseColor(input: string): Oklch {
+  if (typeof input !== "string") {
+    throw new TypeError(`rampkit: expected a color string, got ${input === null ? "null" : typeof input}`);
+  }
+  const parsed = oklch(input);
+  if (!parsed) throw new Error(`rampkit: could not parse color "${input}"`);
+  return parsed;
+}
+
+/**
  * The stop whose reference lightness sits closest to `l` — the rule behind an
  * unforced anchor. Ties keep the lighter stop, since STOPS is scanned in order.
  *
@@ -207,13 +228,12 @@ const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
  * @param input - Any CSS color string (e.g. `"#451dc7"`, `"rebeccapurple"`, `"oklch(0.6 0.2 270)"`).
  * @param options - The geometry half of {@link RampOptions}; serialization options are ignored.
  * @returns A {@link RampResult}.
- * @throws If `input` cannot be parsed as a color, if `lMin`/`lMax` are not
- *   finite numbers with `lMin < lMax`, or if `chroma`/`hueShift` are not finite
- *   (`chroma` must also be non-negative).
+ * @throws If `input` is not a string or cannot be parsed as a color, if
+ *   `lMin`/`lMax` are not finite numbers with `lMin < lMax`, or if
+ *   `chroma`/`hueShift` are not finite (`chroma` must also be non-negative).
  */
 export function rampColors(input: string, options: RampOptions = {}): RampResult {
-  const base = oklch(input);
-  if (!base) throw new Error(`rampkit: could not parse color "${input}"`);
+  const base = parseColor(input);
 
   const baseL = base.l;
   const baseC = base.c;
@@ -299,9 +319,9 @@ export function serializeRamp(result: RampResult, options: SerializeOptions = {}
  * @param input - Any CSS color string (e.g. `"#451dc7"`, `"rebeccapurple"`, `"oklch(0.6 0.2 270)"`).
  * @param options - See {@link RampOptions}.
  * @returns A {@link Ramp}: `{ 50, 100, …, 950 }` mapping each stop to a color string.
- * @throws If `input` cannot be parsed as a color, if `lMin`/`lMax` are not
- *   finite numbers with `lMin < lMax`, or if `chroma`/`hueShift` are not finite
- *   (`chroma` must also be non-negative).
+ * @throws If `input` is not a string or cannot be parsed as a color, if
+ *   `lMin`/`lMax` are not finite numbers with `lMin < lMax`, or if
+ *   `chroma`/`hueShift` are not finite (`chroma` must also be non-negative).
  *
  * @example Default ramp, preserving the input at its nearest stop
  * ```ts

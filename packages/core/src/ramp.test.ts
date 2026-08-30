@@ -63,6 +63,15 @@ test("throws on unparseable input", () => {
   expect(() => ramp("not-a-color")).toThrow();
 });
 
+// Every one of these used to get past the guard: `oklch()` is truthy for a plain
+// object and for an array, so they returned eleven #000000 stops with no error,
+// and `null` threw from inside culori in culori's own words.
+test("throws on non-string input rather than returning an all-black ramp", () => {
+  for (const input of [null, undefined, {}, ["#fff"], 123, true]) {
+    expect(() => ramp(input as never)).toThrow(/rampkit: expected a color string/);
+  }
+});
+
 test("accepts non-hex CSS color inputs", () => {
   expect(() => ramp("rebeccapurple")).not.toThrow();
   expect(() => ramp("oklch(0.7 0.15 250)")).not.toThrow();
