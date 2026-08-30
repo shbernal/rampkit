@@ -31,7 +31,9 @@ the PR.
 - `packages/core`, `@shbernal/rampkit`, the ESM-only library.
   - `src/ramp.ts`, the OKLCH ramp engine (`ramp(input, options)`).
   - `src/format.ts`, the output formatters.
+  - `src/contrast.ts`, WCAG ratios: which stop of a ramp can carry text.
   - `src/ansi.ts`, the terminal swatch preview helper, exported at `/ansi`.
+  - `src/version.ts`, the `VERSION` literal `format()` stamps into output.
   - `src/index.ts`, the public entry point.
   - `scripts/reference-l.ts`, re-derives `REFERENCE_L` from Tailwind's palette.
 - `packages/app`, `@shbernal/rampkit-cli`, the `rampkit` binary.
@@ -60,6 +62,10 @@ the PR.
 - Color parsing goes through [culori](https://culorijs.org). Accept any CSS
   color string it understands instead of hand-rolling a parser.
 - Changing ramp math or a formatter means adding or updating a `*.test.ts`.
+- Colors reaching the engine are guarded by type before culori sees them:
+  `oklch()` is truthy for a plain object, so a parse check alone lets one through
+  and every stop renders `#000000`. A well-formed wrong ramp is the failure mode
+  worth spending a guard on, since nothing downstream rejects it.
 - The CLI writes data to stdout and sends `--preview` swatches and diagnostics
   to stderr. Keep it that way so piping stays clean.
 
@@ -68,7 +74,8 @@ the PR.
 Two tiers, kept apart so a failure tells you how much to trust it.
 
 `bun test` is deterministic and is the one that decides. The core suites cover
-the ramp math, the formatters and the ansi helper; the app suites cover argument
+the ramp math, the formatters, the contrast helpers, the version literal and the
+ansi preview; the app suites cover argument
 parsing, the input pane's clamping and notation conversion, the shared options
 table and the layout budget. A failure here is a real bug.
 
@@ -90,6 +97,9 @@ from it. Prose copies are not, so a new format also needs a line in
 `docs/cli.md`, `docs/tui.md` and `packages/app/README.md`. `COLOR_SPACES` in
 `packages/core/src/ramp.ts` works the same way.
 
+A format whose syntax has comments also belongs in `STAMPABLE_FORMATS`, or
+`--stamp` will quietly decline to stamp it.
+
 ## Re-deriving the reference lightnesses
 
 `REFERENCE_L` in `packages/core/src/ramp.ts` decides which stop an input color is
@@ -108,14 +118,24 @@ comment above the table.
 
 ## Versioning
 
+Two versions, and both are bumped by hand on a release.
+
 `rampkit --version` prints the app's `package.json` version, so bumping the
-manifest is the whole job. How the string gets there depends on how the code
-runs, because importing the manifest would inline all of it into the bundle.
+manifest is the whole job there. How the string gets into the binary depends on
+how the code runs, because importing the manifest would inline all of it into
+the bundle.
 
 - Built with `bun run build`, `scripts/build.ts` substitutes the version for the
   `RAMPKIT_VERSION` identifier, so only the string ships.
 - Run from source with `bun run dev`, no substitution happened, so
   `src/version.ts` falls back to reading `package.json` off disk.
+
+The library's `VERSION`, the one `format({ stamp: true })` writes into generated
+output, is a plain literal in `packages/core/src/version.ts`. That package builds
+with tsc, which would emit an import of the manifest and pull all of it into
+every bundle downstream, so the string is written out instead. `version.test.ts`
+holds it to the manifest, so forgetting it on a release fails the suite rather
+than shipping a ramp that lies about what made it.
 
 ## Publishing
 
@@ -130,6 +150,7 @@ registry:
 ```bash
 # 1. bump versions in lockstep:
 #    packages/core/package.json, packages/app/package.json
+#    packages/core/src/version.ts, the VERSION format() stamps into output
 #    (the build reads the app's manifest, so --version follows automatically)
 bun publish --cwd packages/core   # @shbernal/rampkit
 bun publish --cwd packages/app    # @shbernal/rampkit-cli

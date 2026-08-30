@@ -16,7 +16,12 @@ A [bun](https://bun.sh) workspace monorepo.
 - `packages/core`, `@shbernal/rampkit`, the ESM-only library.
   - `src/ramp.ts`, the OKLCH ramp engine (`ramp(input, options)`).
   - `src/format.ts`, the output formatters (tailwind-v4, css-vars,
-    tailwind-config, json, hex-array).
+    tailwind-config, json, hex-array), and the optional version stamp.
+  - `src/contrast.ts`, WCAG ratios: which stop of a ramp can carry text.
+    `ansi.ts` takes its luminance from here, so the sRGB transfer function has
+    one definition.
+  - `src/version.ts`, the `VERSION` literal, held to the manifest by
+    `version.test.ts`. Bump it with the manifest on a release.
   - `src/ansi.ts`, the terminal swatch preview helper, exported at the `/ansi`
     subpath.
   - `src/index.ts`, the public entry point.

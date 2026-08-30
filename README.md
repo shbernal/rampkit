@@ -53,8 +53,8 @@ these".
 
 ## Documentation
 
-- [Library API](./docs/library.md) covers `ramp()`, `format()`, the options and
-  the ansi helper.
+- [Library API](./docs/library.md) covers `ramp()`, `format()`, the options, the
+  contrast helpers and the ansi preview.
 - [CLI reference](./docs/cli.md) lists every flag and the stdout/stderr contract.
 - [TUI guide](./docs/tui.md) walks the panes and their key bindings.
 - [CONTRIBUTING.md](./CONTRIBUTING.md) has the repo layout, the commands and how

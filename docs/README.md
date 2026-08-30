@@ -1,7 +1,7 @@
 # rampkit documentation
 
-- [Library API](./library.md) covers `ramp()`, `format()`, the options and the
-  ansi helper.
+- [Library API](./library.md) covers `ramp()`, `format()`, the options, the
+  contrast helpers and the ansi preview.
 - [CLI reference](./cli.md) lists every flag and the stdout/stderr contract.
 - [TUI guide](./tui.md) walks the panes and their key bindings.
 
