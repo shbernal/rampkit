@@ -39,7 +39,8 @@ function fail(message: string): never {
   throw new CliError(message);
 }
 
-const HELP = `rampkit — Tailwind-style color ramps from a single color
+/** Exported for the suite, which checks every flag in OPTIONS appears here. */
+export const HELP = `rampkit — Tailwind-style color ramps from a single color
 
 Usage:
   rampkit <color> [options]      Generate a ramp and print it
@@ -65,6 +66,22 @@ Examples:
   rampkit rebeccapurple --format css-vars --name brand
   rampkit '#0ea5e9' -f json --preview
   rampkit '#0ea5e9' --color oklch -f css-vars`;
+
+/** The flags parseArgs accepts. Exported so the suite can hold HELP to it: a
+ *  flag added here without a line in the help text is a documentation bug. */
+export const OPTIONS = {
+  format: { type: "string", short: "f" },
+  color: { type: "string" },
+  name: { type: "string", short: "n" },
+  anchor: { type: "string", short: "a" },
+  chroma: { type: "string", short: "c" },
+  "hue-shift": { type: "string" },
+  lmin: { type: "string" },
+  lmax: { type: "string" },
+  preview: { type: "boolean", short: "p" },
+  help: { type: "boolean", short: "h" },
+  version: { type: "boolean", short: "v" },
+} as const;
 
 // Number() alone is too permissive: it reads "" and "  " as 0, and lets Infinity
 // through to the ramp engine. The bounds below are the CLI's own guardrails —
@@ -124,23 +141,7 @@ export async function runCli(argv: string[], version: string, io: CliIo): Promis
 }
 
 async function run(argv: string[], version: string, io: CliIo): Promise<number> {
-  const { values, positionals } = parseArgs({
-    args: argv,
-    allowPositionals: true,
-    options: {
-      format: { type: "string", short: "f" },
-      color: { type: "string" },
-      name: { type: "string", short: "n" },
-      anchor: { type: "string", short: "a" },
-      chroma: { type: "string", short: "c" },
-      "hue-shift": { type: "string" },
-      lmin: { type: "string" },
-      lmax: { type: "string" },
-      preview: { type: "boolean", short: "p" },
-      help: { type: "boolean", short: "h" },
-      version: { type: "boolean", short: "v" },
-    },
-  });
+  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: OPTIONS });
 
   if (values.help) {
     io.stdout(HELP + "\n");

@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { runCli } from "./cli";
+import { runCli, HELP, OPTIONS } from "./cli";
 import { FORMATS, RAMP_DEFAULTS, DEFAULT_COLOR_SPACE, DEFAULT_NAME } from "@shbernal/rampkit";
 import type { CliIo } from "./cli";
 
@@ -74,6 +74,14 @@ test("--help and --version go to stdout and succeed", async () => {
   const version = await cli(["--version"]);
   expect(version.code).toBe(0);
   expect(version.out).toBe("9.9.9\n");
+});
+
+test("the help text documents every flag parseArgs accepts", () => {
+  for (const [name, spec] of Object.entries(OPTIONS)) {
+    expect(HELP).toContain(`--${name}`);
+    // Shorts are listed as `-f, --format`, so the comma pins the pairing too.
+    if ("short" in spec) expect(HELP).toContain(`-${spec.short}, --${name}`);
+  }
 });
 
 test("rejects an unknown format or color space by name", async () => {
