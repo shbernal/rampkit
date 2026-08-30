@@ -52,8 +52,8 @@ exists on the registry:
 
 ```bash
 # 1. bump versions in lockstep:
-#    packages/core/package.json, packages/core/src/index.ts (VERSION),
-#    packages/app/package.json
+#    packages/core/package.json, packages/app/package.json
+#    (the CLI reads its own manifest, so --version follows automatically)
 bun publish --cwd packages/core   # @shbernal/rampkit
 bun publish --cwd packages/app    # @shbernal/rampkit-cli
 ```

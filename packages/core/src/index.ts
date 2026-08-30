@@ -7,5 +7,3 @@ export { ramp, STOPS } from "./ramp.js";
 export type { Ramp, Stop, RampOptions, ColorSpace } from "./ramp.js";
 export { format } from "./format.js";
 export type { Format, FormatOptions } from "./format.js";
-
-export const VERSION = "0.1.0";
