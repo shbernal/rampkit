@@ -40,6 +40,9 @@ The library is **ESM-only** — no CommonJS.
   tsconfigs — `tsconfig.json` for what gets built and published, and
   `tsconfig.test.json` for the suites and `scripts/`, which are checked but never
   emitted. `typecheck` runs both, so a broken test is not a green build.
+  The app sees the library through `packages/core/dist`, not its sources, so its
+  `typecheck` rebuilds core first — otherwise a freshly added export reads as
+  "has no exported member" at the consumer, with nothing wrong there.
 - Color parsing goes through [culori](https://culorijs.org); accept any CSS color
   string it understands rather than hand-rolling parsers.
 - Add or update a `*.test.ts` when changing ramp math or formatters.

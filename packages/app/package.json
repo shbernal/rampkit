@@ -27,7 +27,7 @@
   "scripts": {
     "build": "bun run scripts/build.ts",
     "dev": "bun run src/main.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "typecheck": "bun run --cwd ../core build && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
     "prepublishOnly": "bun run build"
   },
   "publishConfig": {
