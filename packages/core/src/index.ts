@@ -14,7 +14,8 @@ export {
   DEFAULT_COLOR_SPACE,
 } from "./ramp.js";
 export type { Ramp, RampResult, Stop, RampOptions, SerializeOptions, ColorSpace } from "./ramp.js";
-export { format, FORMATS, DEFAULT_NAME } from "./format.js";
+export { format, FORMATS, STAMPABLE_FORMATS, DEFAULT_NAME } from "./format.js";
+export { VERSION } from "./version.js";
 export { contrast, contrastReport, contrastStop, DEFAULT_TARGET } from "./contrast.js";
 export type { StopContrast, ContrastStopOptions } from "./contrast.js";
 export type { Format, FormatOptions } from "./format.js";

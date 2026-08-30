@@ -15,6 +15,7 @@ import {
   RAMP_DEFAULTS,
   DEFAULT_COLOR_SPACE,
   DEFAULT_NAME,
+  STAMPABLE_FORMATS,
 } from "@shbernal/rampkit";
 import type { Format, RampOptions, Stop, ColorSpace } from "@shbernal/rampkit";
 import { swatches } from "@shbernal/rampkit/ansi";
@@ -60,6 +61,8 @@ Options:
       --lmax <l>       OKLCH lightness at the light end, 0..1 (default: ${RAMP_DEFAULTS.lMax})
       --light <color>  Pin stop 50 to this exact color (overrides --lmax)
       --dark <color>   Pin stop 950 to this exact color (overrides --lmin)
+      --stamp          Prefix the output with the rampkit version that made it
+                       (${STAMPABLE_FORMATS.join(" and ")} only)
   -p, --preview        Also print truecolor swatches (to stderr)
   -h, --help           Show this help
   -v, --version        Show version
@@ -84,6 +87,7 @@ export const OPTIONS = {
   lmax: { type: "string" },
   light: { type: "string" },
   dark: { type: "string" },
+  stamp: { type: "boolean" },
   preview: { type: "boolean", short: "p" },
   help: { type: "boolean", short: "h" },
   version: { type: "boolean", short: "v" },
@@ -177,7 +181,12 @@ async function run(argv: string[], version: string, io: CliIo): Promise<number> 
   }
 
   const scale = ramp(color, options);
-  const output = format(scale, target, { name: values.name });
+  const output = format(scale, target, { name: values.name, stamp: values.stamp });
+  // Ignoring a flag in silence is how someone pastes an unstamped block and only
+  // finds out at the next regeneration. Say so, on stderr, and still succeed.
+  if (values.stamp && !STAMPABLE_FORMATS.includes(target)) {
+    io.stderr(`rampkit: --stamp has no effect on ${target} (no comment syntax)\n`);
+  }
 
   // Data on stdout, decoration on stderr, so a piped stdout stays clean.
   io.stdout(output + "\n");

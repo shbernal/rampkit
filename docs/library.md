@@ -95,6 +95,18 @@ format(scale, "json"); // flat stop to hex map
 format(scale, "hex-array"); // ["#...", ...] lightest to darkest
 ```
 
+Pass `{ stamp: true }` to prefix the output with the rampkit version that made
+it. Only `tailwind-v4` and `css-vars` carry it, the two with comment syntax; the
+JSON-shaped targets have nowhere to put a comment and ignore it, and
+`STAMPABLE_FORMATS` is exported so a UI can tell which is which. The version
+itself is exported as `VERSION`.
+
+The ramp math may change in any `0.x` release, so a stamp is worth setting if
+you paste the stops into a palette file rather than calling `ramp()` at build
+time: the pasted block is the only artifact that reaches the consuming repo, and
+it is there that "upstream retuned the curve" has to be told apart from
+"somebody hand-edited these".
+
 Pass `{ name }` to set the token name in the output, as in `--color-brand-500`.
 It has to be a CSS ident, a letter or underscore followed by letters, digits, `-`
 or `_`, because it is spliced straight into the emitted properties and keys.
