@@ -38,6 +38,7 @@ bun run build      # tsc build for core, bundled bin for app
 bun test           # unit suites (core ramp/format + app color-input)
 bun run typecheck  # tsc --noEmit across packages
 bun run dev        # run the app from source (TUI)
+bun run format     # oxfmt across the repo (--check in CI)
 ```
 
 ## Conventions

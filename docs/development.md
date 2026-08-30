@@ -25,6 +25,7 @@ bun run build      # tsc build for the lib, bundled bin for the app
 bun test           # unit suites (core ramp/format + app color-input)
 bun run typecheck  # tsc --noEmit across packages
 bun run dev        # run the app from source (TUI)
+bun run format     # oxfmt across the repo (--check in CI)
 ```
 
 The library is **ESM-only** — no CommonJS.

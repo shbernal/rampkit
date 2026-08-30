@@ -1,4 +1,0 @@
-node_modules
-packages/*/dist
-bun.lock
-demo.gif

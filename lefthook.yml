@@ -24,7 +24,7 @@ pre-commit:
   commands:
     format:
       glob: "*.{ts,tsx,js,jsx,json,md}"
-      run: bunx prettier --write {staged_files}
+      run: bunx oxfmt {staged_files}
       stage_fixed: true
     typecheck:
       run: bun run typecheck
