@@ -4,8 +4,12 @@ Output demo.gif
 Set Shell bash
 Set FontSize 16
 Set Width 1100
-Set Height 870
+Set Height 940
 Set Padding 20
+# 940px of canvas is 42 rows at this font size, and the interface asks for 41
+# with the longest output format on screen. A shorter window is not broken — the
+# panes not focused collapse to a line to fit it — but the demo is here to show
+# all three at once.
 
 # Launch the TUI off-camera and let bun spin up. Run main.ts directly (not via
 # nested `bun run`, which echoes `$ bun run ...` lines) and clear first so no
