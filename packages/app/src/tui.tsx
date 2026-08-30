@@ -14,8 +14,8 @@ import { spawn } from "node:child_process";
 import { render, Box, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { formatHex } from "culori";
-import { ramp, format, STOPS, FORMATS, COLOR_SPACES } from "@shbernal/rampkit";
-import type { Ramp, ColorSpace } from "@shbernal/rampkit";
+import { rampColors, serializeRamp, format, STOPS, FORMATS, COLOR_SPACES } from "@shbernal/rampkit";
+import type { Format, Ramp, Stop, ColorSpace } from "@shbernal/rampkit";
 import { readableText } from "@shbernal/rampkit/ansi";
 import {
   buildColor,
@@ -29,6 +29,18 @@ import {
 
 /** Width, in characters, of each swatch's color block. */
 const BAR_WIDTH = 18;
+
+type Comps = [string, string, string];
+
+/** Step through a list with wrap-around, in either direction. */
+function cycle<T>(list: readonly T[], current: T, dir: 1 | -1): T {
+  return list[(list.indexOf(current) + dir + list.length) % list.length]!;
+}
+
+/** Rewrite one component of the input triple, keeping the tuple shape. */
+function updateComp(comps: Comps, idx: number, next: (current: string) => string): Comps {
+  return comps.map((c, j) => (j === idx ? next(c) : c)) as Comps;
+}
 
 // Copy via OSC 52: a terminal escape that asks the *terminal emulator* to set
 // the clipboard. Unlike wl-copy/xclip (which run wherever the process runs),
@@ -102,22 +114,22 @@ interface View {
   hexScale?: Ramp; // swatch backgrounds (always hex)
   labelScale?: Ramp; // values shown beside swatches, in the input notation
   outScale?: Ramp; // values for the output pane, in the output syntax
-  anchorHex?: string; // the input color, used to mark the anchor stop
+  anchor?: Stop; // the stop the input color was preserved at
   error?: string;
 }
 
-function App({ initial }: { initial: string }) {
+function App() {
   const { exit } = useApp();
 
   // Input pane state.
   const [inputFormat, setInputFormat] = useState<InputFormat>("hex");
-  const [hexValue, setHexValue] = useState(initial);
-  const [comps, setComps] = useState<[string, string, string]>(["", "", ""]);
+  const [hexValue, setHexValue] = useState("");
+  const [comps, setComps] = useState<Comps>(["", "", ""]);
   const [name, setName] = useState("");
   const [fieldIndex, setFieldIndex] = useState(0);
 
   // Output pane state.
-  const [outFmtIndex, setOutFmtIndex] = useState(0);
+  const [outFormat, setOutFormat] = useState<Format>(FORMATS[0]);
   const [outSpace, setOutSpace] = useState<ColorSpace>("hex");
 
   const [pane, setPane] = useState<"input" | "output">("input");
@@ -126,15 +138,17 @@ function App({ initial }: { initial: string }) {
   const valueFieldCount = inputFormat === "hex" ? 1 : 3;
   const fieldCount = valueFieldCount + 1; // value field(s) + name
   const colorStr = buildColor(inputFormat, hexValue, comps);
-  const outFormat = FORMATS[outFmtIndex]!;
 
   const view = useMemo<View>(() => {
     if (!colorStr) return {};
     try {
-      const hexScale = ramp(colorStr);
-      const labelScale = inputFormat === "hex" ? hexScale : ramp(colorStr, { colorSpace: inputFormat });
-      const outScale = outSpace === "hex" ? hexScale : ramp(colorStr, { colorSpace: outSpace });
-      return { hexScale, labelScale, outScale, anchorHex: formatHex(colorStr) };
+      // Compute once per keystroke; the three views differ only in syntax, and
+      // the gamut mapping behind them is the expensive part.
+      const result = rampColors(colorStr);
+      const hexScale = serializeRamp(result);
+      const labelScale = inputFormat === "hex" ? hexScale : serializeRamp(result, { colorSpace: inputFormat });
+      const outScale = outSpace === "hex" ? hexScale : serializeRamp(result, { colorSpace: outSpace });
+      return { hexScale, labelScale, outScale, anchor: result.anchor };
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err) };
     }
@@ -155,24 +169,19 @@ function App({ initial }: { initial: string }) {
 
   // Re-express the current color in the next/previous input notation.
   const cycleInputFormat = (dir: 1 | -1) => {
-    const next =
-      INPUT_FORMATS[(INPUT_FORMATS.indexOf(inputFormat) + dir + INPUT_FORMATS.length) % INPUT_FORMATS.length]!;
+    const next = cycle(INPUT_FORMATS, inputFormat, dir);
     if (next === "hex") setHexValue(colorStr ? (formatHex(colorStr) ?? "") : "");
     else setComps(colorStr ? toComps(colorStr, next) : ["", "", ""]);
     setInputFormat(next);
     setFieldIndex(0);
   };
 
-  const cycleColorSpace = (dir: 1 | -1) =>
-    setOutSpace((s) => COLOR_SPACES[(COLOR_SPACES.indexOf(s) + dir + COLOR_SPACES.length) % COLOR_SPACES.length]!);
+  const cycleColorSpace = (dir: 1 | -1) => setOutSpace((s) => cycle(COLOR_SPACES, s, dir));
 
   // Snap a component field into its valid range when focus leaves it.
   const commitComp = (idx: number) => {
     if (inputFormat === "hex" || idx >= 3) return;
-    setComps(
-      (prev) =>
-        prev.map((p, j) => (j === idx ? clampText(p, COMP_RANGES[inputFormat][idx]!) : p)) as [string, string, string],
-    );
+    setComps((prev) => updateComp(prev, idx, (c) => clampText(c, COMP_RANGES[inputFormat][idx]!)));
   };
 
   useInput((_input, key) => {
@@ -197,7 +206,7 @@ function App({ initial }: { initial: string }) {
       } else if (key.upArrow) cycleInputFormat(-1);
       else if (key.downArrow) cycleInputFormat(1);
     } else {
-      if (key.tab) setOutFmtIndex((i) => (i + 1) % FORMATS.length);
+      if (key.tab) setOutFormat((f) => cycle(FORMATS, f, 1));
       else if (key.upArrow) cycleColorSpace(-1);
       else if (key.downArrow) cycleColorSpace(1);
     }
@@ -210,8 +219,7 @@ function App({ initial }: { initial: string }) {
     return () => clearTimeout(timer);
   }, [status]);
 
-  const setComp = (i: number) => (v: string) =>
-    setComps((prev) => prev.map((p, j) => (j === i ? v : p)) as [string, string, string]);
+  const setComp = (i: number) => (v: string) => setComps((prev) => updateComp(prev, i, () => v));
 
   const inputActive = pane === "input";
   const nameFocused = inputActive && fieldIndex === valueFieldCount;
@@ -263,7 +271,7 @@ function App({ initial }: { initial: string }) {
             {STOPS.map((stop) => {
               const hex = view.hexScale![stop];
               const label = view.labelScale![stop];
-              const isAnchor = hex === view.anchorHex;
+              const isAnchor = stop === view.anchor;
               return (
                 <Box key={stop}>
                   <Box width={2}>
@@ -311,6 +319,6 @@ function App({ initial }: { initial: string }) {
   );
 }
 
-export function runTui(initial = ""): void {
-  render(<App initial={initial} />);
+export function runTui(): void {
+  render(<App />);
 }

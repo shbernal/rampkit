@@ -38,15 +38,15 @@ export type ColorSpace = (typeof COLOR_SPACES)[number];
 const sig = (n: number): number => Number(n.toPrecision(4));
 
 /**
- * Serialize a culori color (or color string) into the requested CSS syntax.
- * `hexHash` and `hexCase` shape the `"hex"` space only; other spaces ignore them.
+ * Serialize a culori color into the requested CSS syntax. `hexHash` and
+ * `hexCase` shape the `"hex"` space only; other spaces ignore them.
  */
-function serialize(color: Color | string, space: ColorSpace, hexHash: boolean, hexCase: "lower" | "upper"): string {
-  switch (space) {
+function serialize(color: Color, options: Required<SerializeOptions>): string {
+  switch (options.colorSpace) {
     case "hex": {
       let hex = formatHex(color) ?? "#000000";
-      if (hexCase === "upper") hex = hex.toUpperCase();
-      if (!hexHash) hex = hex.replace(/^#/, "");
+      if (options.hexCase === "upper") hex = hex.toUpperCase();
+      if (!options.hexHash) hex = hex.replace(/^#/, "");
       return hex;
     }
     case "rgb":
@@ -77,7 +77,28 @@ const REFERENCE_L: Record<Stop, number> = {
   950: 0.262,
 };
 
-export interface RampOptions {
+/** How a computed ramp is rendered into strings. */
+export interface SerializeOptions {
+  /**
+   * Output color syntax for each stop.
+   * @defaultValue "hex"
+   */
+  colorSpace?: ColorSpace;
+  /**
+   * Emit the leading `#` on `"hex"` output. Set `false` for bare hex (e.g.
+   * Office/PptxGenJS color form). Ignored for non-hex color spaces.
+   * @defaultValue true
+   */
+  hexHash?: boolean;
+  /**
+   * Letter case for `"hex"` output. Ignored for non-hex color spaces.
+   * @defaultValue "lower"
+   */
+  hexCase?: "lower" | "upper";
+}
+
+/** Everything {@link ramp} accepts: the ramp geometry plus how to render it. */
+export interface RampOptions extends SerializeOptions {
   /**
    * Force the stop where the input color is preserved.
    * @defaultValue the stop whose reference lightness is nearest the input's
@@ -108,22 +129,14 @@ export interface RampOptions {
    * @defaultValue 1
    */
   chroma?: number;
-  /**
-   * Output color syntax for each stop.
-   * @defaultValue "hex"
-   */
-  colorSpace?: ColorSpace;
-  /**
-   * Emit the leading `#` on `"hex"` output. Set `false` for bare hex (e.g.
-   * Office/PptxGenJS color form). Ignored for non-hex color spaces.
-   * @defaultValue true
-   */
-  hexHash?: boolean;
-  /**
-   * Letter case for `"hex"` output. Ignored for non-hex color spaces.
-   * @defaultValue "lower"
-   */
-  hexCase?: "lower" | "upper";
+}
+
+/** A computed ramp, before it is rendered into strings. */
+export interface RampResult {
+  /** The stop the input color was preserved at, whether picked or forced. */
+  anchor: Stop;
+  /** Gamut-mapped OKLCH color per stop. */
+  colors: Record<Stop, Color>;
 }
 
 function nearestStop(l: number): Stop {
@@ -142,34 +155,21 @@ function nearestStop(l: number): Stop {
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
 /**
- * Generate a Tailwind-style 50–950 ramp from a single input color.
+ * Compute a ramp without rendering it — the gamut-mapped OKLCH color at every
+ * stop, plus the anchor that was resolved for it.
  *
- * Accepts any CSS color string culori understands (hex, `rgb()`, `hsl()`,
- * `oklch()`, named colors, …). Each stop is emitted in the requested
- * `colorSpace` (`"hex"` by default); the exact input is preserved at its anchor
- * stop. The returned {@link Ramp} is a plain object keyed by numeric stop, ready
- * to embed in design tokens — pass it to {@link format} for a string output.
+ * The expensive half of {@link ramp}: parse, interpolate and gamut-map. Callers
+ * that need the same ramp in several syntaxes (a preview beside an export, say)
+ * run this once and pass the result to {@link serializeRamp} per syntax.
  *
  * @param input - Any CSS color string (e.g. `"#451dc7"`, `"rebeccapurple"`, `"oklch(0.6 0.2 270)"`).
- * @param options - See {@link RampOptions}.
- * @returns A {@link Ramp}: `{ 50, 100, …, 950 }` mapping each stop to a color string.
+ * @param options - The geometry half of {@link RampOptions}; serialization options are ignored.
+ * @returns A {@link RampResult}.
  * @throws If `input` cannot be parsed as a color, if `lMin`/`lMax` are not
  *   finite numbers with `lMin < lMax`, or if `chroma`/`hueShift` are not finite
  *   (`chroma` must also be non-negative).
- *
- * @example Default ramp, preserving the input at its nearest stop
- * ```ts
- * ramp("#451dc7");
- * // { 50: "#eff0ff", …, 800: "#451dc7", …, 950: "#1c0061" }
- * ```
- *
- * @example Force the anchor stop and emit bare uppercase hex (Office/PptxGenJS form)
- * ```ts
- * ramp("#451DC7", { anchor: 800, hexHash: false, hexCase: "upper" });
- * // { 50: "EFF0FF", …, 800: "451DC7", …, 950: "1C0061" }
- * ```
  */
-export function ramp(input: string, options: RampOptions = {}): Ramp {
+export function rampColors(input: string, options: RampOptions = {}): RampResult {
   const base = oklch(input);
   if (!base) throw new Error(`rampkit: could not parse color "${input}"`);
 
@@ -198,11 +198,8 @@ export function ramp(input: string, options: RampOptions = {}): Ramp {
     throw new Error(`rampkit: chroma must be a finite number of at least 0, got ${chromaMul}`);
   }
   const anchor = options.anchor ?? nearestStop(baseL);
-  const colorSpace = options.colorSpace ?? "hex";
-  const hexHash = options.hexHash ?? true;
-  const hexCase = options.hexCase ?? "lower";
 
-  const result = {} as Ramp;
+  const colors = {} as Record<Stop, Color>;
   for (const stop of STOPS) {
     // The anchor keeps the input's own lightness, chroma and hue untouched; it
     // still goes through the gamut map, which is a no-op for in-gamut input and
@@ -219,8 +216,63 @@ export function ramp(input: string, options: RampOptions = {}): Ramp {
     const h = baseH + hueShift * dist;
     const c = isAnchor ? baseC : baseC * chromaMul;
 
-    const inGamut = clampChroma({ mode: "oklch", l, c, h }, "oklch");
-    result[stop] = serialize(inGamut, colorSpace, hexHash, hexCase);
+    colors[stop] = clampChroma({ mode: "oklch", l, c, h }, "oklch");
   }
-  return result;
+  return { anchor, colors };
+}
+
+/**
+ * Render a {@link RampResult} into color strings — the cheap half of
+ * {@link ramp}, safe to call repeatedly on one computed ramp.
+ *
+ * @param result - A ramp from {@link rampColors}.
+ * @param options - See {@link SerializeOptions}.
+ * @returns A {@link Ramp}: `{ 50, 100, …, 950 }` mapping each stop to a color string.
+ */
+export function serializeRamp(result: RampResult, options: SerializeOptions = {}): Ramp {
+  const resolved: Required<SerializeOptions> = {
+    colorSpace: options.colorSpace ?? "hex",
+    hexHash: options.hexHash ?? true,
+    hexCase: options.hexCase ?? "lower",
+  };
+
+  const scale = {} as Ramp;
+  for (const stop of STOPS) scale[stop] = serialize(result.colors[stop], resolved);
+  return scale;
+}
+
+/**
+ * Generate a Tailwind-style 50–950 ramp from a single input color.
+ *
+ * Accepts any CSS color string culori understands (hex, `rgb()`, `hsl()`,
+ * `oklch()`, named colors, …). Each stop is emitted in the requested
+ * `colorSpace` (`"hex"` by default); the exact input is preserved at its anchor
+ * stop. The returned {@link Ramp} is a plain object keyed by numeric stop, ready
+ * to embed in design tokens — pass it to {@link format} for a string output.
+ *
+ * Shorthand for {@link rampColors} followed by {@link serializeRamp}; reach for
+ * those directly to render one ramp in more than one syntax, or to read back the
+ * anchor that was resolved.
+ *
+ * @param input - Any CSS color string (e.g. `"#451dc7"`, `"rebeccapurple"`, `"oklch(0.6 0.2 270)"`).
+ * @param options - See {@link RampOptions}.
+ * @returns A {@link Ramp}: `{ 50, 100, …, 950 }` mapping each stop to a color string.
+ * @throws If `input` cannot be parsed as a color, if `lMin`/`lMax` are not
+ *   finite numbers with `lMin < lMax`, or if `chroma`/`hueShift` are not finite
+ *   (`chroma` must also be non-negative).
+ *
+ * @example Default ramp, preserving the input at its nearest stop
+ * ```ts
+ * ramp("#451dc7");
+ * // { 50: "#eff0ff", …, 800: "#451dc7", …, 950: "#1c0061" }
+ * ```
+ *
+ * @example Force the anchor stop and emit bare uppercase hex (Office/PptxGenJS form)
+ * ```ts
+ * ramp("#451DC7", { anchor: 800, hexHash: false, hexCase: "upper" });
+ * // { 50: "EFF0FF", …, 800: "451DC7", …, 950: "1C0061" }
+ * ```
+ */
+export function ramp(input: string, options: RampOptions = {}): Ramp {
+  return serializeRamp(rampColors(input, options), options);
 }

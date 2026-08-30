@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import { rgb, inGamut } from "culori";
-import { ramp, STOPS } from "./ramp.js";
+import { ramp, rampColors, serializeRamp, STOPS } from "./ramp.js";
 import type { ColorSpace } from "./ramp.js";
 
 const srgb = inGamut("rgb");
@@ -219,4 +219,38 @@ test("rejects option values that would never converge", () => {
   expect(() => ramp("#0ea5e9", { hueShift: Number.NaN })).toThrow(/hueShift/);
   // Large but finite values still resolve.
   expect(() => ramp("#0ea5e9", { chroma: 1e6, hueShift: -1e6 })).not.toThrow();
+});
+
+test("rampColors reports the anchor it resolved", () => {
+  // Previously the only way to find the anchor was to compare color values,
+  // which mis-identifies it whenever two stops render the same.
+  expect(rampColors("#451dc7").anchor).toBe(800);
+  expect(rampColors("#ffffff").anchor).toBe(50);
+  expect(rampColors("#0ea5e9", { anchor: 700 }).anchor).toBe(700);
+});
+
+test("rampColors reports one anchor even when every stop renders alike", () => {
+  const result = rampColors("#ffffff", { anchor: 950 });
+  const scale = serializeRamp(result);
+  expect(new Set(Object.values(scale)).size).toBe(1);
+  expect(result.anchor).toBe(950);
+});
+
+test("one computed ramp serializes to the same strings as ramp()", () => {
+  const options = { anchor: 600, chroma: 1.2, hueShift: 15 } as const;
+  const result = rampColors("#0ea5e9", options);
+  for (const space of SPACES) {
+    expect(serializeRamp(result, { colorSpace: space })).toEqual(ramp("#0ea5e9", { ...options, colorSpace: space }));
+  }
+  expect(serializeRamp(result, { hexHash: false, hexCase: "upper" })).toEqual(
+    ramp("#0ea5e9", { ...options, hexHash: false, hexCase: "upper" }),
+  );
+});
+
+test("rampColors yields gamut-mapped oklch colors, not strings", () => {
+  const { colors } = rampColors("oklch(0.7 0.4 250)");
+  for (const stop of STOPS) {
+    expect(colors[stop].mode).toBe("oklch");
+    expect(nearlyInGamut(serializeRamp({ anchor: 500, colors }, { colorSpace: "hex" })[stop])).toBe(true);
+  }
 });

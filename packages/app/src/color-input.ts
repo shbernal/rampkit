@@ -46,6 +46,10 @@ export const COMP_RANGES: Record<InputFormat, [Range, Range, Range]> = {
   ],
 };
 
+// Deliberately not core's sig(): that one returns a number at a fixed precision
+// for oklch() serialization, this one produces editable field text at a caller's
+// precision. Sharing across the package boundary would couple display text to
+// the wire format for one shared expression.
 const round = (n: number, digits: number): string => String(Number(n.toPrecision(digits)));
 
 /** Bring a number into a component's range; hue wraps, everything else clamps.

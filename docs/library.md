@@ -58,6 +58,25 @@ and validating input:
 import { FORMATS, COLOR_SPACES, STOPS } from "@shbernal/rampkit";
 ```
 
+## Rendering one ramp in several syntaxes
+
+`ramp()` is `rampColors()` followed by `serializeRamp()`. Split them when you
+need the same ramp in more than one syntax — the parse, interpolation and gamut
+mapping happen once, and each extra syntax costs only the serialization:
+
+```ts
+import { rampColors, serializeRamp } from "@shbernal/rampkit";
+
+const result = rampColors("#451dc7");
+result.anchor; // 800 — the stop the input was preserved at
+serializeRamp(result); // hex
+serializeRamp(result, { colorSpace: "oklch" }); // same ramp, oklch()
+```
+
+`result.colors` holds the gamut-mapped OKLCH color per stop, as culori objects.
+Read `result.anchor` rather than comparing values to find the anchor: two stops
+can render identically, and for a near-black input two of them do.
+
 ## Terminal preview — `@shbernal/rampkit/ansi`
 
 A swatch-preview helper for terminals is exported at the `/ansi` subpath,
