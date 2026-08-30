@@ -67,16 +67,35 @@ Examples:
   rampkit '#0ea5e9' --color oklch -f css-vars`;
 
 // Number() alone is too permissive: it reads "" and "  " as 0, and lets Infinity
-// through to the ramp engine. The ranges mirror what core accepts — core stays
-// the authority, this is just the flag-shaped error message.
-function num(key: string, raw: string | undefined, min: number, max: number): number | undefined {
+// through to the ramp engine. The bounds below are the CLI's own guardrails —
+// deliberately tighter than core, which accepts any finite chroma and any finite
+// lMin < lMax — so a typo like `-c 500` is a flag error rather than a ramp that
+// silently clamps to the sRGB boundary at every stop. A flag with no useful
+// bound (hue drift wraps) passes none.
+function num(key: string, raw: string | undefined, min?: number, max?: number): number | undefined {
   if (raw === undefined) return undefined;
   if (raw.trim() === "") fail(`--${key} requires a number`);
   const n = Number(raw);
   if (!Number.isFinite(n)) fail(`--${key} must be a finite number, got "${raw}"`);
-  if (n < min || n > max) fail(`--${key} must be between ${min} and ${max}, got ${n}`);
+  if ((min !== undefined && n < min) || (max !== undefined && n > max)) {
+    fail(`--${key} must be between ${min} and ${max}, got ${n}`);
+  }
   return n;
 }
+
+/** The numeric geometry flags: the option each one sets and the range it accepts. */
+interface NumericFlag {
+  flag: "chroma" | "hue-shift" | "lmin" | "lmax";
+  key: "chroma" | "hueShift" | "lMin" | "lMax";
+  min?: number;
+  max?: number;
+}
+const NUMERIC: readonly NumericFlag[] = [
+  { flag: "chroma", key: "chroma", min: 0, max: 10 },
+  { flag: "hue-shift", key: "hueShift" },
+  { flag: "lmin", key: "lMin", min: 0, max: 1 },
+  { flag: "lmax", key: "lMax", min: 0, max: 1 },
+];
 
 /** The real process streams, used by the entry point. */
 export const processIo: CliIo = {
@@ -151,16 +170,14 @@ async function run(argv: string[], version: string, io: CliIo): Promise<number> 
     if (!isStop(anchor)) fail(`--anchor must be one of ${STOPS.join(", ")}`);
     options.anchor = anchor;
   }
-  const chroma = num("chroma", values.chroma, 0, 10);
-  if (chroma !== undefined) options.chroma = chroma;
-  const hueShift = num("hue-shift", values["hue-shift"], -Infinity, Infinity);
-  if (hueShift !== undefined) options.hueShift = hueShift;
-  const lmin = num("lmin", values.lmin, 0, 1);
-  if (lmin !== undefined) options.lMin = lmin;
-  const lmax = num("lmax", values.lmax, 0, 1);
-  if (lmax !== undefined) options.lMax = lmax;
-  if (lmin !== undefined && lmax !== undefined && lmin >= lmax) {
-    fail(`--lmin (${lmin}) must be below --lmax (${lmax})`);
+  for (const { flag, key, min, max } of NUMERIC) {
+    const value = num(flag, values[flag], min, max);
+    if (value !== undefined) options[key] = value;
+  }
+  // Needs both, so it does not fit the table above.
+  const { lMin, lMax } = options;
+  if (lMin !== undefined && lMax !== undefined && lMin >= lMax) {
+    fail(`--lmin (${lMin}) must be below --lmax (${lMax})`);
   }
 
   const scale = ramp(color, options);

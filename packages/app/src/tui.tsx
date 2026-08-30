@@ -35,6 +35,9 @@ import {
   INPUT_FORMATS,
   type InputFormat,
 } from "./color-input";
+// The TUI is already visibly rampkit, so it shows the bare message rather than
+// the `rampkit:`-prefixed line the CLI writes to stderr.
+import { errorMessage } from "./fail.js";
 
 /** Width, in characters, of each swatch's color block. */
 const BAR_WIDTH = 18;
@@ -159,7 +162,7 @@ function App() {
       const outScale = outSpace === "hex" ? hexScale : serializeRamp(result, { colorSpace: outSpace });
       return { hexScale, labelScale, outScale, anchor: result.anchor };
     } catch (err) {
-      return { error: err instanceof Error ? err.message : String(err) };
+      return { error: errorMessage(err) };
     }
   }, [colorStr, inputFormat, outSpace]);
 
@@ -172,7 +175,7 @@ function App() {
     try {
       output = format(view.outScale, outFormat, { name: name.trim() || undefined });
     } catch (err) {
-      outputError = err instanceof Error ? err.message : String(err);
+      outputError = errorMessage(err);
     }
   }
 
@@ -199,7 +202,7 @@ function App() {
       if (output)
         copyToClipboard(output).then(
           () => setStatus("✓ copied to clipboard"),
-          (err) => setStatus(`⚠ copy failed: ${err instanceof Error ? err.message : String(err)}`),
+          (err) => setStatus(`⚠ copy failed: ${errorMessage(err)}`),
         );
       return;
     }
