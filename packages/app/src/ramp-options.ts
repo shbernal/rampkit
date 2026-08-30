@@ -1,6 +1,6 @@
 // The five geometry options `ramp()` accepts, as one table both front ends read:
 // the CLI takes the accepted range of each flag, the TUI's ramp pane takes the
-// same range plus how far one ↑/↓ press moves within it. A bound stated twice is
+// same range plus how far one keypress moves within it. A bound stated twice is
 // a bound that eventually disagrees with itself — a value the pane can dial to
 // but `--chroma` rejects would be a bug in one of the two, with nothing to say
 // which. Kept free of React/Ink so it can be unit-tested directly.
@@ -26,12 +26,12 @@ export interface NumericFlag {
   min?: number;
   max?: number;
   /**
-   * The range the ramp pane's ↑/↓ moves within. Defaults to `[min, max]`; only
+   * The range the ramp pane's arrows move within. Defaults to `[min, max]`; only
    * hue drift sets it, because core accepts any finite value there (the hue
    * wraps) while a dial needs two ends.
    */
   dial?: Range;
-  /** How far one ↑/↓ press moves the value. */
+  /** How far one ↑/↓ press moves the value; ←/→ moves COARSE_STEPS of these. */
   step: number;
   /** Decimals the value is rendered at, and rounded to after each step. */
   digits: number;
@@ -93,23 +93,32 @@ function dial(settings: RampSettings, spec: NumericFlag): Range {
   return { min, max };
 }
 
+/** Steps one ←/→ press covers, against the one step ↑/↓ moves. The ends of
+ *  these ranges are far from the defaults the values live around — `chroma 8` is
+ *  140 fine presses away — so the dials also move in tens. Ten keeps every
+ *  coarse landing on the fine grid, so the two can be mixed freely. */
+export const COARSE_STEPS = 10;
+
 /**
- * Move one field by a single ↑/↓ press. Numeric fields clamp at their ends
- * (a value that wraps from 10 back to 0 under a held key is a trap), except hue
- * drift, which wraps like any other hue. The anchor walks {@link ANCHORS} and
- * clamps at both ends.
+ * Move one field by a keypress. Numeric fields clamp at their ends (a value that
+ * wraps from 10 back to 0 under a held key is a trap), except hue drift, which
+ * wraps like any other hue. The anchor walks {@link ANCHORS} and clamps at both
+ * ends.
  *
- * @param dir - `1` for ↑, `-1` for ↓, for every field. A number moves by one
- *   step; the anchor moves one place *up* the scale, which is a step back
- *   through ANCHORS, since that list runs top-down.
+ * @param dir - `1` for more, `-1` for less, for every field. The anchor moves
+ *   *up* the scale on `1`, which is a step back through ANCHORS, since that list
+ *   runs top-down.
+ * @param steps - How many steps the press covers: 1 for ↑/↓, {@link COARSE_STEPS}
+ *   for ←/→. A coarse press is one clamp, not ten — it stops at the end rather
+ *   than being refused for overshooting it.
  */
-export function stepField(settings: RampSettings, field: RampField, dir: 1 | -1): RampSettings {
+export function stepField(settings: RampSettings, field: RampField, dir: 1 | -1, steps = 1): RampSettings {
   if (field === "anchor") {
-    const i = ANCHORS.indexOf(settings.anchor) - dir;
+    const i = ANCHORS.indexOf(settings.anchor) - dir * steps;
     return { ...settings, anchor: ANCHORS[Math.min(ANCHORS.length - 1, Math.max(0, i))]! };
   }
   const spec = BY_FLAG[field];
-  const value = round(clampNum(settings[spec.key] + dir * spec.step, dial(settings, spec)), spec.digits);
+  const value = round(clampNum(settings[spec.key] + dir * steps * spec.step, dial(settings, spec)), spec.digits);
   return { ...settings, [spec.key]: value };
 }
 

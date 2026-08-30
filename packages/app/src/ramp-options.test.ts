@@ -2,6 +2,7 @@ import { test, expect } from "bun:test";
 import { rampColors, RAMP_DEFAULTS, STOPS } from "@shbernal/rampkit";
 import {
   ANCHORS,
+  COARSE_STEPS,
   NUMERIC,
   RAMP_FIELDS,
   RAMP_SETTINGS_DEFAULTS,
@@ -20,6 +21,10 @@ const press = (field: RampField, dir: 1 | -1, n: number, from: RampSettings = D)
   for (let i = 0; i < n; i++) s = stepField(s, field, dir);
   return s;
 };
+
+/** One ←/→ press. */
+const coarse = (field: RampField, dir: 1 | -1, from: RampSettings = D): RampSettings =>
+  stepField(from, field, dir, COARSE_STEPS);
 
 // The table both front ends read.
 
@@ -72,6 +77,50 @@ test("the anchor walks the scale's own order and clamps at both ends", () => {
   expect(stepField(D, "anchor", 1).anchor).toBe("auto"); // ↑ from auto: nowhere
   expect(press("anchor", -1, 99).anchor).toBe(950);
   expect(press("anchor", 1, 99).anchor).toBe("auto");
+});
+
+// stepField — one coarse press.
+
+test("a coarse press covers exactly COARSE_STEPS fine ones", () => {
+  for (const { flag } of NUMERIC) {
+    for (const dir of [1, -1] as const) {
+      expect(coarse(flag, dir)).toEqual(press(flag, dir, COARSE_STEPS));
+    }
+  }
+  // Including the anchor, which runs out of scale first and stops at the end.
+  expect(coarse("anchor", -1).anchor).toBe(press("anchor", -1, COARSE_STEPS).anchor);
+});
+
+test("a coarse press lands on the fine grid, so the two mix", () => {
+  // Every value ←/→ reaches is one ↑/↓ could have reached, ends included — so a
+  // coarse press followed by fine ones still passes through the default exactly.
+  for (const { flag, key, step } of NUMERIC) {
+    for (const dir of [1, -1] as const) {
+      const moved = coarse(flag, dir)[key] - D[key];
+      expect(Math.abs(moved / step - Math.round(moved / step))).toBeLessThan(1e-9);
+    }
+  }
+  expect(press("chroma", -1, COARSE_STEPS, coarse("chroma", 1))).toEqual(D);
+});
+
+test("a coarse press stops at an end rather than overshooting past it", () => {
+  expect(coarse("lmin", -1, { ...D, lMin: 0.02 }).lMin).toBe(0); // 0.02 - 0.05, floored
+  expect(coarse("lmax", 1).lMax).toBe(1); // 0.995 + 0.05, capped
+  expect(coarse("anchor", 1).anchor).toBe("auto");
+  expect(coarse("anchor", -1, { ...D, anchor: 400 }).anchor).toBe(950);
+});
+
+test("the far ends come within a handful of presses", () => {
+  // The reason ←/→ exist at all: chroma 8 is 140 fine presses from the default.
+  let c = D;
+  for (let i = 0; i < 14; i++) c = coarse("chroma", 1, c);
+  expect(c.chroma).toBe(8);
+  expect(press("chroma", 1, 140).chroma).toBe(8);
+  // And lmin's floor is 36 fine presses, or 4 coarse — the last of them clamping.
+  let l = D;
+  for (let i = 0; i < 4; i++) l = coarse("lmin", -1, l);
+  expect(l.lMin).toBe(0);
+  expect(press("lmin", -1, 36).lMin).toBe(0);
 });
 
 // toRampOptions — what the engine is handed.

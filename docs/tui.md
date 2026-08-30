@@ -24,10 +24,13 @@ The geometry `ramp()` is built from — the same five values the CLI takes as
 flags, so a ramp dialled in here is reproducible as a one-liner.
 
 - **Tab** — move between `anchor`, `chroma`, `hue-shift`, `lmin` and `lmax`.
-- **↑/↓** — adjust the focused one. **↑** is always "more": more chroma, more
-  drift, a higher lightness end. For `anchor` it is one stop _up_ the scale
-  drawn above, so the arrow and the `*` move together; past stop 50 it reaches
-  `auto`, where the stop is picked from the input's own lightness.
+- **↑/↓** — adjust the focused one by one step. **↑** is always "more": more
+  chroma, more drift, a higher lightness end. For `anchor` it is one stop _up_
+  the scale drawn above, so the arrow and the `*` move together; past stop 50 it
+  reaches `auto`, where the stop is picked from the input's own lightness.
+- **←/→** — the same, ten steps at a time, for crossing the range: `chroma 8` is
+  14 presses rather than 140. Every value they land on is one **↑/↓** could have
+  reached, so the two mix freely.
 
 `hue-shift` wraps at half a turn; everything else stops at its limit. The two
 lightness ends stop one step short of each other, since a ramp needs `lmin`
@@ -45,6 +48,7 @@ below `lmax`.
 | -------------------- | -------------------------------------------------------------------------------- |
 | **Shift+Tab**        | Cycle focus: input → ramp → output                                               |
 | **↑/↓**              | Input notation (input) / adjust the focused dial (ramp) / output syntax (output) |
+| **←/→**              | Adjust the focused dial by ten steps (ramp)                                      |
 | **Tab**              | Cycle fields (input, ramp) / output format (output)                              |
 | **Enter**            | Copy the output to the clipboard                                                 |
 | **Esc** / **Ctrl-C** | Quit                                                                             |

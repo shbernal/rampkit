@@ -45,6 +45,7 @@ APP_CWD = os.path.join(os.path.dirname(__file__), "..")
 # Key escape sequences.
 UP = b"\x1b[A"
 DOWN = b"\x1b[B"
+RIGHT = b"\x1b[C"
 TAB = b"\x09"
 SHIFT_TAB = b"\x1b[Z"
 ESC = b"\x1b"
@@ -131,6 +132,8 @@ def main():
     # scale from `auto`, so the input is pinned to stop 50 rather than wherever
     # its lightness fell.
     ok &= check("anchor dial forces a stop", [b"#0ea5e9", SHIFT_TAB, DOWN], "anchor 50")
+    # Tab to chroma, then → for ten steps at once: 1.00 + 10 × 0.05.
+    ok &= check("coarse dial covers ten steps", [b"#0ea5e9", SHIFT_TAB, TAB, RIGHT], "chroma 1.50")
     # Output pane: two Shift+Tabs, then ↓ cycles color syntax to rgb().
     ok &= check("output syntax switch (hex→rgb)", [b"#0ea5e9", SHIFT_TAB, SHIFT_TAB, DOWN], "output", "rgb(")
 

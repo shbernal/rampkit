@@ -6,7 +6,8 @@
 //                right of its swatch; the anchor stop is marked with `*`.
 //   Ramp pane:   the geometry the CLI exposes as flags. Tab cycles the fields,
 //                ↑/↓ adjust the focused one — up for more, down for less, and
-//                for the anchor, up and down the scale drawn above.
+//                for the anchor, up and down the scale drawn above. ←/→ do the
+//                same in tens, so the far ends are reachable in a few presses.
 //   Output pane: ↑/↓ cycle the output color syntax; Tab cycles the output format.
 //
 //   Enter copies the output; Escape/Ctrl-C quits. Swatch backgrounds are always
@@ -45,6 +46,7 @@ import {
   fieldText,
   stepField,
   toRampOptions,
+  COARSE_STEPS,
   RAMP_FIELDS,
   RAMP_SETTINGS_DEFAULTS,
   type RampSettings,
@@ -64,7 +66,7 @@ type Pane = (typeof PANES)[number];
  *  discoverable without pressing it. */
 const HINTS: Record<Pane, string> = {
   input: "↑↓: input notation · Tab: field · Shift+Tab: ramp pane · Enter: copy · Esc: quit",
-  ramp: "↑↓: adjust · Tab: field · Shift+Tab: output pane · Enter: copy · Esc: quit",
+  ramp: "↑↓/←→: adjust ×1/×10 · Tab: field · Shift+Tab: output pane · Enter: copy · Esc: quit",
   output: "↑↓: color syntax · Tab: output format · Shift+Tab: input pane · Enter: copy · Esc: quit",
 };
 
@@ -223,8 +225,9 @@ function App() {
 
   const cycleColorSpace = (dir: 1 | -1) => setOutSpace((s) => cycle(COLOR_SPACES, s, dir));
 
-  // ↑ is 1 for every field: more chroma, more drift, or the anchor a stop higher.
-  const stepRamp = (dir: 1 | -1) => setSettings((s) => stepField(s, RAMP_FIELDS[rampIndex]!, dir));
+  // Up is "more" for every field: more chroma, more drift, or the anchor a stop
+  // higher. ↑/↓ move one step, →/← the same ten at a time.
+  const stepRamp = (dir: 1 | -1, steps = 1) => setSettings((s) => stepField(s, RAMP_FIELDS[rampIndex]!, dir, steps));
 
   // Snap a component field into its valid range when focus leaves it.
   const commitComp = (idx: number) => {
@@ -257,6 +260,8 @@ function App() {
       if (key.tab) setRampIndex((i) => (i + 1) % RAMP_FIELDS.length);
       else if (key.upArrow) stepRamp(1);
       else if (key.downArrow) stepRamp(-1);
+      else if (key.rightArrow) stepRamp(1, COARSE_STEPS);
+      else if (key.leftArrow) stepRamp(-1, COARSE_STEPS);
     } else {
       if (key.tab) setOutFormat((f) => cycle(FORMATS, f, 1));
       else if (key.upArrow) cycleColorSpace(-1);

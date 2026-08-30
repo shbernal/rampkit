@@ -33,7 +33,8 @@ into three panes; **Shift+Tab** cycles focus through them.
   preserved input with `*`.
 - **Ramp** — the same geometry the flags set (`anchor`, `chroma`, `hue-shift`,
   `lmin`, `lmax`). **Tab** moves between them, **↑/↓** adjust the focused one:
-  up for more, and for the anchor, one stop up the scale above.
+  up for more, and for the anchor, one stop up the scale above. **←/→** do the
+  same ten steps at a time, for crossing the range.
 - **Output** — **↑/↓** cycle the output color syntax, **Tab** cycles the output
   format. **Enter** copies the result to the clipboard (works over SSH).
 
