@@ -1,6 +1,10 @@
 # Git hooks for rampkit, managed by lefthook (installed via `bun install`'s
 # prepare script). Kept intentionally lean so commits stay fast:
-#   pre-commit — format staged files in place, then typecheck the workspace.
+#   pre-commit — format staged files in place, then lint them and typecheck
+#                the workspace. Piped rather than parallel: oxfmt rewrites the
+#                staged files that oxlint then reads, so the two must not
+#                overlap. Piping also short-circuits, so a format failure never
+#                buries the typecheck output.
 #   pre-push   — run the unit suites.
 # Bypass in a pinch with `git commit/push --no-verify`.
 
@@ -20,12 +24,15 @@ remotes:
     refetch_frequency: 24h
 
 pre-commit:
-  parallel: true
+  piped: true
   commands:
     format:
       glob: "*.{ts,tsx,js,jsx,json,md}"
       run: bunx oxfmt {staged_files}
       stage_fixed: true
+    lint:
+      glob: "*.{ts,tsx,js,jsx}"
+      run: bunx oxlint {staged_files}
     typecheck:
       run: bun run typecheck
 

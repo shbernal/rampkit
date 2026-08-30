@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react", "import", "promise", "node"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error"
+  },
+  "rules": {
+    // packages/app builds JSX with tsconfig's "jsx": "react-jsx", the automatic
+    // runtime, so the compiler injects the factory import itself. Requiring a
+    // React binding in scope would only ask for an unused import.
+    "react-in-jsx-scope": "off"
+  },
+  "env": {
+    "builtin": true
+  }
+}

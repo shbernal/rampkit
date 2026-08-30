@@ -14,6 +14,7 @@
     "dev": "bun run --cwd packages/app dev",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
+    "lint": "oxlint",
     "prepare": "lefthook install"
   },
   "devDependencies": {
@@ -22,6 +23,7 @@
     "@types/react": "^19.2.18",
     "lefthook": "^2.1.12",
     "oxfmt": "^0.65.0",
+    "oxlint": "^1.80.0",
     "typescript": "^7.0.2"
   }
 }

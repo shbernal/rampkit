@@ -47,6 +47,8 @@ function osc52Copy(text: string): boolean {
   const term = process.env.TERM ?? "";
   if (process.env.TMUX) {
     // tmux DCS passthrough: wrap, doubling every inner ESC so tmux forwards it.
+    // The ESC match is the whole point here, so the control-character rule is off.
+    // oxlint-disable-next-line no-control-regex
     seq = `\x1bPtmux;${seq.replace(/\x1b/g, "\x1b\x1b")}\x1b\\`;
   } else if (term.startsWith("screen")) {
     seq = `\x1bP${seq}\x1b\\`;
