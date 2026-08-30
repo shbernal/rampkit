@@ -1,9 +1,12 @@
-// Interactive TUI (Ink). Two focusable panes — Shift+Tab switches between them.
+// Interactive TUI (Ink). Three focusable panes — Shift+Tab cycles through them.
 //
 //   Input pane:  ↑/↓ cycle the input notation (hex/oklch/rgb/hsl, re-expressing
 //                the same color); Tab cycles the value field(s) → name → back.
 //                The scale lists each stop's value (in the input notation) to the
 //                right of its swatch; the anchor stop is marked with `*`.
+//   Ramp pane:   the geometry the CLI exposes as flags. Tab cycles the fields,
+//                ↑/↓ adjust the focused one — up for more, down for less, and
+//                for the anchor, up and down the scale drawn above.
 //   Output pane: ↑/↓ cycle the output color syntax; Tab cycles the output format.
 //
 //   Enter copies the output; Escape/Ctrl-C quits. Swatch backgrounds are always
@@ -38,12 +41,32 @@ import {
   type Comps,
   type InputFormat,
 } from "./color-input";
+import {
+  fieldText,
+  stepField,
+  toRampOptions,
+  RAMP_FIELDS,
+  RAMP_SETTINGS_DEFAULTS,
+  type RampSettings,
+} from "./ramp-options";
 // The TUI is already visibly rampkit, so it shows the bare message rather than
 // the `rampkit:`-prefixed line the CLI writes to stderr.
 import { errorMessage } from "./fail.js";
 
 /** Width, in characters, of each swatch's color block. */
 const BAR_WIDTH = 18;
+
+/** Focus order, top to bottom — the order the panes are drawn in. */
+const PANES = ["input", "ramp", "output"] as const;
+type Pane = (typeof PANES)[number];
+
+/** Footer hint per pane. Shift+Tab names where it lands, so the cycle is
+ *  discoverable without pressing it. */
+const HINTS: Record<Pane, string> = {
+  input: "↑↓: input notation · Tab: field · Shift+Tab: ramp pane · Enter: copy · Esc: quit",
+  ramp: "↑↓: adjust · Tab: field · Shift+Tab: output pane · Enter: copy · Esc: quit",
+  output: "↑↓: color syntax · Tab: output format · Shift+Tab: input pane · Enter: copy · Esc: quit",
+};
 
 /** Step through a list with wrap-around, in either direction. */
 function cycle<T>(list: readonly T[], current: T, dir: 1 | -1): T {
@@ -143,11 +166,16 @@ function App() {
   const [name, setName] = useState("");
   const [fieldIndex, setFieldIndex] = useState(0);
 
+  // Ramp pane state. Held as one object so the memo below can depend on its
+  // identity: it changes on a keypress that moves a dial, and on nothing else.
+  const [settings, setSettings] = useState<RampSettings>(RAMP_SETTINGS_DEFAULTS);
+  const [rampIndex, setRampIndex] = useState(0);
+
   // Output pane state.
   const [outFormat, setOutFormat] = useState<Format>(FORMATS[0]);
   const [outSpace, setOutSpace] = useState<ColorSpace>(DEFAULT_COLOR_SPACE);
 
-  const [pane, setPane] = useState<"input" | "output">("input");
+  const [pane, setPane] = useState<Pane>("input");
   const [status, setStatus] = useState("");
 
   const valueFieldCount = inputFormat === "hex" ? 1 : 3;
@@ -159,7 +187,7 @@ function App() {
     try {
       // Compute once per keystroke; the three views differ only in syntax, and
       // the gamut mapping behind them is the expensive part.
-      const result = rampColors(colorStr);
+      const result = rampColors(colorStr, toRampOptions(settings));
       const hexScale = serializeRamp(result);
       const labelScale = inputFormat === "hex" ? hexScale : serializeRamp(result, { colorSpace: inputFormat });
       const outScale = outSpace === "hex" ? hexScale : serializeRamp(result, { colorSpace: outSpace });
@@ -167,7 +195,7 @@ function App() {
     } catch (err) {
       return { error: errorMessage(err) };
     }
-  }, [colorStr, inputFormat, outSpace]);
+  }, [colorStr, inputFormat, outSpace, settings]);
 
   // The name field is edited a character at a time, so it passes through states
   // format() rejects. Surface that like any other input error instead of
@@ -195,6 +223,9 @@ function App() {
 
   const cycleColorSpace = (dir: 1 | -1) => setOutSpace((s) => cycle(COLOR_SPACES, s, dir));
 
+  // ↑ is 1 for every field: more chroma, more drift, or the anchor a stop higher.
+  const stepRamp = (dir: 1 | -1) => setSettings((s) => stepField(s, RAMP_FIELDS[rampIndex]!, dir));
+
   // Snap a component field into its valid range when focus leaves it.
   const commitComp = (idx: number) => {
     if (inputFormat === "hex" || idx >= 3) return;
@@ -213,7 +244,7 @@ function App() {
     }
     if (key.tab && key.shift) {
       if (pane === "input") commitComp(fieldIndex);
-      return setPane((p) => (p === "input" ? "output" : "input"));
+      return setPane((p) => cycle(PANES, p, 1));
     }
 
     if (pane === "input") {
@@ -222,6 +253,10 @@ function App() {
         setFieldIndex((i) => (i + 1) % fieldCount);
       } else if (key.upArrow) cycleInputFormat(-1);
       else if (key.downArrow) cycleInputFormat(1);
+    } else if (pane === "ramp") {
+      if (key.tab) setRampIndex((i) => (i + 1) % RAMP_FIELDS.length);
+      else if (key.upArrow) stepRamp(1);
+      else if (key.downArrow) stepRamp(-1);
     } else {
       if (key.tab) setOutFormat((f) => cycle(FORMATS, f, 1));
       else if (key.upArrow) cycleColorSpace(-1);
@@ -248,6 +283,7 @@ function App() {
   };
 
   const inputActive = pane === "input";
+  const rampActive = pane === "ramp";
   const nameFocused = inputActive && fieldIndex === valueFieldCount;
 
   return (
@@ -322,8 +358,26 @@ function App() {
         )}
       </Box>
 
+      {/* Ramp pane — the geometry `ramp()` takes, one dial per CLI flag. */}
+      <Box borderStyle="round" borderColor={rampActive ? "cyan" : "gray"} paddingX={1}>
+        <Text dimColor>ramp</Text>
+        {RAMP_FIELDS.map((field, i) => {
+          const focused = rampActive && i === rampIndex;
+          return (
+            <Box key={field} marginLeft={2}>
+              <Text dimColor={!focused} color={focused ? "cyan" : undefined}>
+                {field}{" "}
+              </Text>
+              <Text color={focused ? "cyan" : undefined} bold={focused}>
+                {fieldText(settings, field)}
+              </Text>
+            </Box>
+          );
+        })}
+      </Box>
+
       {/* Output pane */}
-      <Box flexDirection="column" borderStyle="round" borderColor={!inputActive ? "cyan" : "gray"} paddingX={1}>
+      <Box flexDirection="column" borderStyle="round" borderColor={pane === "output" ? "cyan" : "gray"} paddingX={1}>
         <Box>
           <Text dimColor>output </Text>
           <Text color="cyan">{outFormat}</Text>
@@ -334,11 +388,7 @@ function App() {
       </Box>
 
       <Box flexDirection="column" marginTop={1}>
-        <Text dimColor>
-          {inputActive
-            ? "↑↓: input notation · Tab: field · Shift+Tab: output pane · Enter: copy · Esc: quit"
-            : "↑↓: color syntax · Tab: output format · Shift+Tab: input pane · Enter: copy · Esc: quit"}
-        </Text>
+        <Text dimColor>{HINTS[pane]}</Text>
         {status && <Text color={status.startsWith("⚠") ? "red" : "green"}>{status}</Text>}
       </Box>
     </Box>

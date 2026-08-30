@@ -5,9 +5,10 @@ WHAT THIS IS
     A *manual* sanity tool — NOT part of `bun test`. It launches the real TUI
     inside a pseudo-terminal (pty), types keystrokes, and asserts that the panes
     render and react. The deterministic logic (clamping, hue-wrap, notation
-    conversion) is covered by the fast, reliable unit tests in
-    `src/color-input.test.ts`; this only checks the wiring the unit tests can't:
-    that Ink actually draws the panes and that keys are routed to the right one.
+    conversion, dial stepping) is covered by the fast, reliable unit tests in
+    `src/color-input.test.ts` and `src/ramp-options.test.ts`; this only checks
+    the wiring the unit tests can't: that Ink actually draws the panes and that
+    keys are routed to the right one.
 
 RELIABILITY — READ BEFORE TRUSTING A FAILURE
     This check is timing-sensitive by nature: it sleeps between keystrokes and
@@ -112,8 +113,8 @@ def main():
     print(f"rampkit TUI smoke (delay={DELAY}s) — timing-sensitive, see header on failure\n")
     ok = True
     # The notations cycle in COLOR_SPACES order: hex → rgb → hsl → oklch → hex.
-    # Renders both panes; anchor stop is marked and the typed color is preserved.
-    ok &= check("renders panes + marks anchor", [b"#0ea5e9"], "input hex", "output", "*", "#0ea5e9")
+    # Renders all three panes; anchor stop is marked and the typed color is preserved.
+    ok &= check("renders panes + marks anchor", [b"#0ea5e9"], "input hex", "ramp", "output", "*", "#0ea5e9")
     # ↓ re-expresses the same color in rgb (hex #0ea5e9 = 14, 165, 233).
     ok &= check("input notation switch (hex→rgb)", [b"#0ea5e9", DOWN], "input rgb", "R 14", "G 165", "B 233")
     # Out-of-range component snaps into range on Tab (999 → 255).
@@ -126,8 +127,12 @@ def main():
         "input oklch",
         "C 0.4",
     )
-    # Output pane: ↓ cycles color syntax to rgb().
-    ok &= check("output syntax switch (hex→rgb)", [b"#0ea5e9", SHIFT_TAB, DOWN], "output", "rgb(")
+    # Ramp pane: one Shift+Tab from the input pane. ↓ walks the anchor down the
+    # scale from `auto`, so the input is pinned to stop 50 rather than wherever
+    # its lightness fell.
+    ok &= check("anchor dial forces a stop", [b"#0ea5e9", SHIFT_TAB, DOWN], "anchor 50")
+    # Output pane: two Shift+Tabs, then ↓ cycles color syntax to rgb().
+    ok &= check("output syntax switch (hex→rgb)", [b"#0ea5e9", SHIFT_TAB, SHIFT_TAB, DOWN], "output", "rgb(")
 
     print()
     if ok:
