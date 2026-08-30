@@ -8,12 +8,14 @@ import type { Ramp } from "./ramp.js";
 
 const RESET = "\x1b[0m";
 
+/** Undo the sRGB transfer function for one channel, giving linear light. */
+const lin = (v: number) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+
 /** Choose black or white foreground for legibility on a given hex background,
  *  using the standard sRGB relative-luminance threshold. */
 export function readableText(hex: string): "#000000" | "#ffffff" {
   const c = rgb(hex);
   if (!c) return "#000000";
-  const lin = (v: number) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
   const luminance = 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
   return luminance > 0.4 ? "#000000" : "#ffffff";
 }
