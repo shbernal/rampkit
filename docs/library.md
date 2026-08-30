@@ -89,6 +89,35 @@ DEFAULT_NAME; // "color", the token name format() uses
 
 The first entry of `FORMATS` is the default output format.
 
+## Which stop can carry text
+
+`contrastReport()` measures every stop against the foregrounds that will sit on
+it, and `contrastStop()` picks one. Both take WCAG 2.1 ratios, the numbers a
+contrast gate applies.
+
+```ts
+import { ramp, contrast, contrastReport, contrastStop } from "@shbernal/rampkit";
+
+const scale = ramp("#88C0D0");
+
+contrastStop(scale, ["#ffffff"]); // 700 — the lightest stop white text works on
+contrastStop(scale, ["#111111"], { prefer: "deepest", target: 7 }); // 400
+
+contrastReport(scale, ["#ffffff"]);
+// [{ stop: 50, color: "#eafaff", ratios: [1.09], min: 1.09 }, …]
+
+contrast("#ffffff", "#767676"); // 4.54, two colors on their own
+```
+
+The report leaves the policy to you, which is the honest shape: a ramp is
+usually read by more than one foreground at different stops, and which pairs
+matter is your business. `contrastStop()` applies the strict reading, a stop
+that clears the target against _every_ foreground listed, so pass one at a time
+for the usual question. Ask for a stop that carries both white and near-black
+text and you get `undefined`: any color's ratios against pure white and pure
+black multiply to exactly 21, so the best a single one can do against the pair
+is √21 ≈ 4.58.
+
 ## One ramp in several syntaxes
 
 `ramp()` is `rampColors()` followed by `serializeRamp()`. Split them when you

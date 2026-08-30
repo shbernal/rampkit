@@ -6,6 +6,7 @@
 
 import { rgb } from "culori";
 import type { Rgb } from "culori";
+import { luminance } from "./contrast.js";
 import { atStop, STOPS } from "./ramp.js";
 import type { Ramp } from "./ramp.js";
 
@@ -16,18 +17,10 @@ const WHITE = "#ffffff";
 /** Width of the color block, unless a ramp needs more room for its values. */
 const DEFAULT_BLOCK_WIDTH = 16;
 
-/** Undo the sRGB transfer function for one channel, giving linear light.
- *  0.04045 is the sRGB spec knee; WCAG's older 0.03928 gives the same answer
- *  here, since no 8-bit channel value falls between the two. */
-const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
-
-/** Relative luminance of an already-parsed color, so callers that have one
- *  don't pay for a second parse. */
-const luminance = (c: Rgb): number => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
-
-// Biased well above WCAG's ~0.179 crossover: on a terminal, black-on-mid-tone
-// reads better than white does, so mid-tones get black text. Tuned by eye, not
-// taken from a standard.
+// Luminance is WCAG's, imported from contrast.ts so the transfer function has
+// one definition. This threshold is not: it sits well above WCAG's ~0.179
+// crossover because on a terminal black-on-mid-tone reads better than white
+// does, so mid-tones get black text. Tuned by eye, not taken from a standard.
 const DARK_TEXT_ABOVE = 0.4;
 
 /** Foreground for an already-parsed background, so callers holding an Rgb don't
