@@ -6,7 +6,7 @@
 
 import { rgb } from "culori";
 import type { Rgb } from "culori";
-import { STOPS } from "./ramp.js";
+import { atStop, STOPS } from "./ramp.js";
 import type { Ramp } from "./ramp.js";
 
 const RESET = "\x1b[0m";
@@ -96,7 +96,7 @@ export function swatchLine(stop: number | string, value: string, options: Swatch
  * syntax like `oklch()` still lines up.
  */
 export function swatches(ramp: Ramp, options: SwatchOptions = {}): string {
-  const values = STOPS.map((stop) => ramp[stop]);
-  const blockWidth = Math.max(options.blockWidth ?? DEFAULT_BLOCK_WIDTH, ...values.map((v) => v.length));
-  return STOPS.map((stop, i) => swatchLine(stop, values[i]!, { blockWidth })).join("\n");
+  const rows = STOPS.map((stop) => [stop, atStop(ramp, stop)] as const);
+  const blockWidth = Math.max(options.blockWidth ?? DEFAULT_BLOCK_WIDTH, ...rows.map(([, value]) => value.length));
+  return rows.map(([stop, value]) => swatchLine(stop, value, { blockWidth })).join("\n");
 }

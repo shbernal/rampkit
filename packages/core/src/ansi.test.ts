@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { ramp, STOPS } from "./ramp.js";
 import { swatches, swatchLine, readableText } from "./ansi.js";
-import type { ColorSpace } from "./ramp.js";
+import type { ColorSpace, Ramp } from "./ramp.js";
 
 const SPACES: ColorSpace[] = ["hex", "rgb", "hsl", "oklch"];
 
@@ -53,6 +53,11 @@ test("rows run lightest to darkest", () => {
   const lines = swatches(scale).split("\n");
   expect(lines[0]).toContain(scale[50]);
   expect(lines.at(-1)).toContain(scale[950]);
+});
+
+test("swatches rejects a ramp missing a stop", () => {
+  const { 500: _dropped, ...partial } = ramp("#0ea5e9");
+  expect(() => swatches(partial as Ramp)).toThrow(/missing stop 500/);
 });
 
 test("readableText picks a legible foreground and accepts any syntax", () => {

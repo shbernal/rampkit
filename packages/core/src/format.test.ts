@@ -41,11 +41,24 @@ test("defaults the token name to 'color'", () => {
   expect(format(scale, "css-vars")).toContain("--color-500:");
 });
 
-test("hex-array follows STOPS, not the ramp's own key order", () => {
+test("output follows STOPS, not the ramp's own key order", () => {
   // A ramp rebuilt darkest-first still has to come out lightest-first.
-  const reversed = Object.fromEntries(STOPS.toReversed().map((s) => [s, scale[s]]));
-  const arr = JSON.parse(format(reversed as typeof scale, "hex-array"));
-  expect(arr).toEqual(STOPS.map((s) => scale[s]));
+  const reversed = Object.fromEntries(STOPS.toReversed().map((s) => [s, scale[s]])) as typeof scale;
+  expect(JSON.parse(format(reversed, "hex-array"))).toEqual(STOPS.map((s) => scale[s]));
+  expect(Object.keys(JSON.parse(format(reversed, "json")))).toEqual(STOPS.map(String));
+});
+
+test("keys that are not stops never reach the object formats", () => {
+  const extra = { ...scale, junk: "oops" } as typeof scale;
+  expect(Object.keys(JSON.parse(format(extra, "json")))).toEqual(STOPS.map(String));
+  expect(Object.keys(JSON.parse(format(extra, "tailwind-config")).color)).toEqual(STOPS.map(String));
+});
+
+test("every format rejects a ramp missing a stop", () => {
+  const { 500: _dropped, ...partial } = scale;
+  for (const target of FORMATS) {
+    expect(() => format(partial as typeof scale, target)).toThrow(/missing stop 500/);
+  }
 });
 
 test("rejects a token name that is not a CSS ident", () => {

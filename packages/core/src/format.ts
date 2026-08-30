@@ -1,7 +1,7 @@
 // Output formatters — the multi-format layer that turns a Ramp into the shape a
 // given toolchain expects. This is the piece most generators omit.
 
-import { STOPS } from "./ramp.js";
+import { atStop, STOPS } from "./ramp.js";
 import type { Ramp } from "./ramp.js";
 
 /** Every output target {@link format} understands. */
@@ -55,11 +55,8 @@ export function format(scale: Ramp, target: Format, options: FormatOptions = {})
 
   // Walk STOPS rather than the ramp's own keys: "lightest → darkest" is a
   // documented part of the contract, not a side effect of JS key ordering.
-  const entries = STOPS.map((stop) => {
-    const value = scale[stop];
-    if (typeof value !== "string") throw new Error(`rampkit: ramp is missing stop ${stop}`);
-    return [stop, value] as const;
-  });
+  const entries = STOPS.map((stop) => [stop, atStop(scale, stop)] as const);
+  const object = Object.fromEntries(entries);
 
   switch (target) {
     case "tailwind-v4":
@@ -67,9 +64,9 @@ export function format(scale: Ramp, target: Format, options: FormatOptions = {})
     case "css-vars":
       return `:root {\n${entries.map(([s, h]) => `  --${name}-${s}: ${h};`).join("\n")}\n}`;
     case "tailwind-config":
-      return JSON.stringify({ [name]: scale }, null, 2);
+      return JSON.stringify({ [name]: object }, null, 2);
     case "json":
-      return JSON.stringify(scale, null, 2);
+      return JSON.stringify(object, null, 2);
     case "hex-array":
       return JSON.stringify(entries.map(([, h]) => h));
   }

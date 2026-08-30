@@ -245,6 +245,12 @@ test("one computed ramp serializes to the same strings as ramp()", () => {
   );
 });
 
+test("serializeRamp rejects a result missing a stop, rather than emitting black", () => {
+  const { colors } = rampColors("#0ea5e9");
+  const { 500: _dropped, ...partial } = colors;
+  expect(() => serializeRamp({ anchor: 500, colors: partial as typeof colors })).toThrow(/missing stop 500/);
+});
+
 test("rampColors yields gamut-mapped oklch colors, not strings", () => {
   const { colors } = rampColors("oklch(0.7 0.4 250)");
   for (const stop of STOPS) {

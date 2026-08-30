@@ -28,6 +28,15 @@ export const STOPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as c
 export type Stop = (typeof STOPS)[number];
 export type Ramp = Record<Stop, string>;
 
+/** Read one stop out of a per-stop map, failing the same way wherever a caller
+ *  hands over an incomplete ramp — rather than a TypeError from one entry point
+ *  and a silent black from another. Internal: not part of the public API. */
+export function atStop<T>(map: Record<Stop, T>, stop: Stop): T {
+  const value = map[stop] as T | undefined;
+  if (value === undefined) throw new Error(`rampkit: ramp is missing stop ${stop}`);
+  return value;
+}
+
 /** Every color syntax a ramp can be emitted in. */
 export const COLOR_SPACES = ["hex", "rgb", "hsl", "oklch"] as const;
 
@@ -253,7 +262,7 @@ export function serializeRamp(result: RampResult, options: SerializeOptions = {}
   };
 
   const scale = {} as Ramp;
-  for (const stop of STOPS) scale[stop] = serialize(result.colors[stop], resolved);
+  for (const stop of STOPS) scale[stop] = serialize(atStop(result.colors, stop), resolved);
   return scale;
 }
 
