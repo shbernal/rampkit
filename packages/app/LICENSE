@@ -19,3 +19,15 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Attribution
+
+The ramp-generation approach used here is inspired by tints.dev
+(https://tints.dev) by Simeon Griggs: three lightness anchors distributed in a
+perceptual color space, per-stop hue and saturation adjustment, and the input
+color preserved at its anchor stop. tints.dev is licensed CC BY-NC 4.0.
+
+rampkit contains no tints.dev code. It is an independent reimplementation of the
+general technique, written from scratch and released under the MIT terms above.

@@ -1,17 +1,19 @@
 # rampkit
 
-Generate Tailwind-style color ramps (`50`–`950`) from a single input color — the
-exact input is preserved at its natural stop — and emit the result in several
-output formats, not just a Tailwind config object.
+Give it one color and get the whole Tailwind-style scale around it, `50` through
+`950`. Your color comes back untouched at the stop its lightness belongs to, and
+the rest of the ramp is built around that in OKLCH.
 
 ![rampkit TUI demo](./demo.gif)
 
-rampkit ships three ways to use it from one repo:
+The scale comes out as Tailwind v4 `@theme` properties, plain CSS variables, a
+Tailwind config object, JSON, or a bare hex array. Each stop can be written as
+hex, `rgb()`, `hsl()` or `oklch()`.
 
-| Package                                                   | Install                            | Use                                               |
-| --------------------------------------------------------- | ---------------------------------- | ------------------------------------------------- |
-| **Library** — [`@shbernal/rampkit`](./packages/core)      | `bun add @shbernal/rampkit`        | `import { ramp, format }` in your code            |
-| **CLI + TUI** — [`@shbernal/rampkit-cli`](./packages/app) | `bun add -g @shbernal/rampkit-cli` | `rampkit '#451dc7'` (CLI) or bare `rampkit` (TUI) |
+| Package                                               | Install                            | Use                                                |
+| ----------------------------------------------------- | ---------------------------------- | -------------------------------------------------- |
+| [`@shbernal/rampkit`](./packages/core), the library   | `bun add @shbernal/rampkit`        | `import { ramp, format }`                          |
+| [`@shbernal/rampkit-cli`](./packages/app), the binary | `bun add -g @shbernal/rampkit-cli` | `rampkit '#451dc7'`, or bare `rampkit` for the TUI |
 
 ## Quick start
 
@@ -23,38 +25,29 @@ format(scale, "tailwind-v4"); // @theme custom properties
 ```
 
 ```bash
-rampkit '#451dc7'                # tailwind-v4 @theme (default)
-rampkit                          # no args → interactive TUI
+rampkit '#451dc7'   # tailwind-v4 @theme, the default
+rampkit             # no arguments, interactive TUI
 ```
 
 ## Documentation
 
-Full docs live in [`docs/`](./docs):
+- [Library API](./docs/library.md) covers `ramp()`, `format()`, the options and
+  the ansi helper.
+- [CLI reference](./docs/cli.md) lists every flag and the stdout/stderr contract.
+- [TUI guide](./docs/tui.md) walks the panes and their key bindings.
+- [CONTRIBUTING.md](./CONTRIBUTING.md) has the repo layout, the commands and how
+  a release goes out.
 
-- [Library API](./docs/library.md) — `ramp()`, `format()`, options, the ansi helper.
-- [CLI reference](./docs/cli.md) — flags, formats, stdin/stdout piping.
-- [TUI guide](./docs/tui.md) — interactive panes and key bindings.
-- [Development](./docs/development.md) — monorepo layout, build/test, regenerating the demo.
+## Why this exists
 
-## Why
+Every tool I tried missed something. Several are web apps with no library behind
+them. Some take one input format. Most emit a Tailwind config object and stop
+there. A few are unmaintained, and a few aren't open source. rampkit is a typed
+package you install, it reads any CSS color culori can parse, it targets
+Tailwind v4, it emits five formats, and MIT means you can ship it in paid work.
 
-Existing tools each miss something: they're web apps not libraries, support only
-one input format, emit only a Tailwind config object, are unmaintained, or aren't
-open source. `rampkit` aims to be: maintained, TypeScript, Tailwind v4-aware, an
-installable npm package, broad input encodings, and **multi-format output** — all
-under a permissive (MIT) license.
-
-## Credit / provenance
-
-The ramp-generation _approach_ is inspired by
-[tints.dev](https://tints.dev) by Simeon Griggs (3-anchor lightness distribution
-in a perceptual color space, per-stop hue/saturation tweaks, and preserving the
-input color at its anchor stop). tints.dev is licensed CC BY-NC 4.0.
-
-**`rampkit` does not copy tints.dev's code.** It is an independent clean-room
-reimplementation of the general technique — algorithms and ideas are not
-copyrightable — written from scratch and released under MIT so it can be used
-freely, including commercially.
+The approach is inspired by [tints.dev](https://tints.dev). None of its code is
+reused here; see [LICENSE](./LICENSE).
 
 ## License
 
