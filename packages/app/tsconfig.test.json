@@ -1,0 +1,14 @@
+// See packages/core/tsconfig.test.json — same purpose, plus the app's own
+// `lib`/`types` lists, which an `extends` would otherwise replace wholesale.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "lib": ["ES2023", "DOM"],
+    "resolveJsonModule": true,
+    "types": ["react", "node", "bun"]
+  },
+  "include": ["src", "scripts"],
+  "exclude": []
+}

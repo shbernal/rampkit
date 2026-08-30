@@ -1,0 +1,19 @@
+// The main tsconfig excludes `*.test.ts` and `scripts/` so the published build
+// never emits them. This config exists purely to typecheck them: same
+// strictness, nothing emitted, everything back in scope. `typecheck` runs both.
+//
+// `lib` is one release ahead of the build's on purpose. The published code has
+// to run on the Node in `engines`; tests and scripts only ever run under bun,
+// so they may use `toSorted`/`toReversed` — which is also what oxlint asks for.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "lib": ["ES2023"],
+    "resolveJsonModule": true,
+    "types": ["bun"]
+  },
+  "include": ["src", "scripts"],
+  "exclude": []
+}

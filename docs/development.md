@@ -23,7 +23,7 @@ Run from the repo root:
 bun install
 bun run build      # tsc build for the lib, bundled bin for the app
 bun test           # unit suites (core ramp/format/ansi + app cli/color-input)
-bun run typecheck  # tsc --noEmit across packages
+bun run typecheck  # tsc --noEmit across packages, sources and suites alike
 bun run dev        # run the app from source (TUI)
 bun run format     # oxfmt across the repo (--check in CI)
 bun run lint       # oxlint (correctness, suspicious, perf)
@@ -33,7 +33,10 @@ The library is **ESM-only** — no CommonJS.
 
 ## Conventions
 
-- TypeScript throughout; keep `bun run typecheck` clean.
+- TypeScript throughout; keep `bun run typecheck` clean. Each package has two
+  tsconfigs — `tsconfig.json` for what gets built and published, and
+  `tsconfig.test.json` for the suites and `scripts/`, which are checked but never
+  emitted. `typecheck` runs both, so a broken test is not a green build.
 - Color parsing goes through [culori](https://culorijs.org); accept any CSS color
   string it understands rather than hand-rolling parsers.
 - Add or update a `*.test.ts` when changing ramp math or formatters.

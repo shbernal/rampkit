@@ -38,7 +38,7 @@ Run from the repo root:
 bun install
 bun run build      # tsc build for core, bundled bin for app
 bun test           # unit suites (core ramp/format/ansi + app cli/color-input)
-bun run typecheck  # tsc --noEmit across packages
+bun run typecheck  # tsc --noEmit across packages (sources, suites and scripts)
 bun run dev        # run the app from source (TUI)
 bun run format     # oxfmt across the repo (--check in CI)
 bun run lint       # oxlint (correctness, suspicious, perf)
@@ -47,7 +47,9 @@ bun run lint       # oxlint (correctness, suspicious, perf)
 ## Conventions
 
 - **ESM-only.** No CommonJS. The library has `"sideEffects": false`.
-- TypeScript throughout; keep `bun run typecheck` clean.
+- TypeScript throughout; keep `bun run typecheck` clean. `tsconfig.json` is
+  what ships; `tsconfig.test.json` adds the suites and `scripts/` under the
+  same strictness with nothing emitted. `typecheck` runs both.
 - CLI contract: data output goes to **stdout** (clean for piping); `--preview`
   swatches and diagnostics go to **stderr**. Preserve this when editing `cli.ts`.
 - Color parsing goes through [culori](https://culorijs.org); accept any CSS color
