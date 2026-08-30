@@ -1,5 +1,6 @@
 import { test, expect } from "bun:test";
 import { runCli } from "./cli";
+import { FORMATS, RAMP_DEFAULTS, DEFAULT_COLOR_SPACE, DEFAULT_NAME } from "@shbernal/rampkit";
 import type { CliIo } from "./cli";
 
 interface Run {
@@ -60,6 +61,15 @@ test("--help and --version go to stdout and succeed", async () => {
   expect(help.code).toBe(0);
   expect(help.out).toContain("Usage:");
   expect(help.err).toBe("");
+
+  // The documented defaults are the ones the library actually applies.
+  expect(help.out).toContain(`(default: ${FORMATS[0]})`);
+  expect(help.out).toContain(`(default: ${DEFAULT_COLOR_SPACE})`);
+  expect(help.out).toContain(`(default: ${DEFAULT_NAME};`);
+  expect(help.out).toContain(`(default: ${RAMP_DEFAULTS.chroma})`);
+  expect(help.out).toContain(`(default: ${RAMP_DEFAULTS.hueShift})`);
+  expect(help.out).toContain(`(default: ${RAMP_DEFAULTS.lMin})`);
+  expect(help.out).toContain(`(default: ${RAMP_DEFAULTS.lMax})`);
 
   const version = await cli(["--version"]);
   expect(version.code).toBe(0);

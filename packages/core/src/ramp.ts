@@ -43,6 +43,13 @@ export const COLOR_SPACES = ["hex", "rgb", "hsl", "oklch"] as const;
 /** Color syntax used for each value in the ramp. */
 export type ColorSpace = (typeof COLOR_SPACES)[number];
 
+/** The geometry defaults {@link rampColors} applies, so a CLI or UI can show
+ *  them without restating the numbers. */
+export const RAMP_DEFAULTS = { lMin: 0.18, lMax: 0.995, hueShift: 0, chroma: 1 } as const;
+
+/** Color syntax {@link serializeRamp} emits when none is requested. */
+export const DEFAULT_COLOR_SPACE: ColorSpace = "hex";
+
 /** Round to ~4 significant digits for readable oklch() output. */
 const sig = (n: number): number => Number(n.toPrecision(4));
 
@@ -202,8 +209,8 @@ export function rampColors(input: string, options: RampOptions = {}): RampResult
   const baseC = base.c;
   const baseH = base.h ?? 0;
 
-  const lMaxOpt = options.lMax ?? 0.995;
-  const lMinOpt = options.lMin ?? 0.18;
+  const lMaxOpt = options.lMax ?? RAMP_DEFAULTS.lMax;
+  const lMinOpt = options.lMin ?? RAMP_DEFAULTS.lMin;
   if (!Number.isFinite(lMinOpt) || !Number.isFinite(lMaxOpt) || lMinOpt >= lMaxOpt) {
     throw new Error(`rampkit: lMin (${lMinOpt}) must be a finite number below lMax (${lMaxOpt})`);
   }
@@ -214,8 +221,8 @@ export function rampColors(input: string, options: RampOptions = {}): RampResult
   const lMax = Math.max(lMaxOpt, baseL);
   const lMin = Math.min(lMinOpt, baseL);
 
-  const hueShift = options.hueShift ?? 0;
-  const chromaMul = options.chroma ?? 1;
+  const hueShift = options.hueShift ?? RAMP_DEFAULTS.hueShift;
+  const chromaMul = options.chroma ?? RAMP_DEFAULTS.chroma;
   if (!Number.isFinite(hueShift)) throw new Error(`rampkit: hueShift must be a finite number, got ${hueShift}`);
   // A non-finite multiplier sends clampChroma searching against an infinite
   // bound, which never converges — it hangs rather than returning nonsense.
@@ -256,7 +263,7 @@ export function rampColors(input: string, options: RampOptions = {}): RampResult
  */
 export function serializeRamp(result: RampResult, options: SerializeOptions = {}): Ramp {
   const resolved: Required<SerializeOptions> = {
-    colorSpace: options.colorSpace ?? "hex",
+    colorSpace: options.colorSpace ?? DEFAULT_COLOR_SPACE,
     hexHash: options.hexHash ?? true,
     hexCase: options.hexCase ?? "lower",
   };

@@ -1,9 +1,9 @@
 import { test, expect } from "bun:test";
-import { ramp, STOPS } from "./ramp.js";
+import { ramp, STOPS, COLOR_SPACES } from "./ramp.js";
 import { swatches, swatchLine, readableText } from "./ansi.js";
-import type { ColorSpace, Ramp } from "./ramp.js";
+import type { Ramp } from "./ramp.js";
 
-const SPACES: ColorSpace[] = ["hex", "rgb", "hsl", "oklch"];
+const SPACES = COLOR_SPACES;
 
 /** Row width with the ANSI escapes stripped. Matching the ESC byte is the point. */
 // oxlint-disable-next-line no-control-regex
@@ -34,9 +34,11 @@ test("emits a truecolor background/foreground pair and resets", () => {
   expect(line).toStartWith(" 500  ");
 });
 
-test("an unparseable value degrades to a black block instead of throwing", () => {
+test("an unparseable value degrades to a legible black block instead of throwing", () => {
   const line = swatchLine(500, "not-a-color");
   expect(line).toContain("\x1b[48;2;0;0;0m");
+  // The block it paints is black, so the label has to be white to be read at all.
+  expect(line).toContain("\x1b[38;2;255;255;255m");
   expect(line).toContain("not-a-color");
 });
 

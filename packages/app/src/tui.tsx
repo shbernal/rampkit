@@ -14,7 +14,16 @@ import { spawn } from "node:child_process";
 import { render, Box, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { formatHex } from "culori";
-import { rampColors, serializeRamp, format, STOPS, FORMATS, COLOR_SPACES } from "@shbernal/rampkit";
+import {
+  rampColors,
+  serializeRamp,
+  format,
+  STOPS,
+  FORMATS,
+  COLOR_SPACES,
+  DEFAULT_COLOR_SPACE,
+  DEFAULT_NAME,
+} from "@shbernal/rampkit";
 import type { Format, Ramp, Stop, ColorSpace } from "@shbernal/rampkit";
 import { readableText } from "@shbernal/rampkit/ansi";
 import {
@@ -130,7 +139,7 @@ function App() {
 
   // Output pane state.
   const [outFormat, setOutFormat] = useState<Format>(FORMATS[0]);
-  const [outSpace, setOutSpace] = useState<ColorSpace>("hex");
+  const [outSpace, setOutSpace] = useState<ColorSpace>(DEFAULT_COLOR_SPACE);
 
   const [pane, setPane] = useState<"input" | "output">("input");
   const [status, setStatus] = useState("");
@@ -261,7 +270,7 @@ function App() {
         </Box>
         <Box marginBottom={1}>
           <Text dimColor>name </Text>
-          <TextInput value={name} onChange={setName} focus={nameFocused} placeholder="color" />
+          <TextInput value={name} onChange={setName} focus={nameFocused} placeholder={DEFAULT_NAME} />
         </Box>
 
         {(view.error || outputError) && <Text color="red">⚠ {view.error || outputError}</Text>}

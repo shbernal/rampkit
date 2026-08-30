@@ -6,7 +6,16 @@
 // touching process directly, so the whole thing is exercisable from a test.
 
 import { parseArgs } from "node:util";
-import { ramp, format, STOPS, FORMATS, COLOR_SPACES } from "@shbernal/rampkit";
+import {
+  ramp,
+  format,
+  STOPS,
+  FORMATS,
+  COLOR_SPACES,
+  RAMP_DEFAULTS,
+  DEFAULT_COLOR_SPACE,
+  DEFAULT_NAME,
+} from "@shbernal/rampkit";
 import type { Format, RampOptions, Stop, ColorSpace } from "@shbernal/rampkit";
 import { swatches } from "@shbernal/rampkit/ansi";
 import { errorLine } from "./fail.js";
@@ -38,15 +47,15 @@ Usage:
   echo <color> | rampkit         Read the color from stdin
 
 Options:
-  -f, --format <fmt>   Output format: ${FORMATS.join(", ")} (default: tailwind-v4)
-      --color <space>  Color syntax: ${COLOR_SPACES.join(", ")} (default: hex)
-  -n, --name <name>    Token name used in variable/key output (default: color;
+  -f, --format <fmt>   Output format: ${FORMATS.join(", ")} (default: ${FORMATS[0]})
+      --color <space>  Color syntax: ${COLOR_SPACES.join(", ")} (default: ${DEFAULT_COLOR_SPACE})
+  -n, --name <name>    Token name used in variable/key output (default: ${DEFAULT_NAME};
                        a CSS ident; unused by json and hex-array)
   -a, --anchor <stop>  Force the stop where the input is preserved (50..950)
-  -c, --chroma <mul>   Global chroma multiplier, 0..10 (default: 1)
-      --hue-shift <d>  Degrees of hue drift across the ramp (default: 0)
-      --lmin <l>       OKLCH lightness at the dark end, 0..1 (default: 0.18)
-      --lmax <l>       OKLCH lightness at the light end, 0..1 (default: 0.995)
+  -c, --chroma <mul>   Global chroma multiplier, 0..10 (default: ${RAMP_DEFAULTS.chroma})
+      --hue-shift <d>  Degrees of hue drift across the ramp (default: ${RAMP_DEFAULTS.hueShift})
+      --lmin <l>       OKLCH lightness at the dark end, 0..1 (default: ${RAMP_DEFAULTS.lMin})
+      --lmax <l>       OKLCH lightness at the light end, 0..1 (default: ${RAMP_DEFAULTS.lMax})
   -p, --preview        Also print truecolor swatches (to stderr)
   -h, --help           Show this help
   -v, --version        Show version
@@ -126,12 +135,12 @@ async function run(argv: string[], version: string, io: CliIo): Promise<number> 
   const color = positionals[0] ?? (await io.readStdin()) ?? "";
   if (!color) fail("no color provided (pass a color argument or pipe one via stdin)");
 
-  const target = values.format ?? "tailwind-v4";
+  const target = values.format ?? FORMATS[0];
   if (!isFormat(target)) {
     fail(`unknown format "${target}". Valid: ${FORMATS.join(", ")}`);
   }
 
-  const colorSpace = values.color ?? "hex";
+  const colorSpace = values.color ?? DEFAULT_COLOR_SPACE;
   if (!isColorSpace(colorSpace)) {
     fail(`unknown color space "${colorSpace}". Valid: ${COLOR_SPACES.join(", ")}`);
   }

@@ -52,11 +52,19 @@ followed by letters, digits, `-` or `_` — since it is spliced straight into th
 emitted properties and keys; anything else throws.
 
 `FORMATS` and `COLOR_SPACES` are exported alongside `STOPS` for building menus
-and validating input:
+and validating input, and the defaults are exported too, so a UI can show what
+it will fall back to without restating the values:
 
 ```ts
 import { FORMATS, COLOR_SPACES, STOPS } from "@shbernal/rampkit";
+import { RAMP_DEFAULTS, DEFAULT_COLOR_SPACE, DEFAULT_NAME } from "@shbernal/rampkit";
+
+RAMP_DEFAULTS; // { lMin: 0.18, lMax: 0.995, hueShift: 0, chroma: 1 }
+DEFAULT_COLOR_SPACE; // "hex"
+DEFAULT_NAME; // "color" — the token name format() uses
 ```
+
+The first entry of `FORMATS` is the default output format.
 
 ## Rendering one ramp in several syntaxes
 

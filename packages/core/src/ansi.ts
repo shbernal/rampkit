@@ -30,6 +30,10 @@ const luminance = (c: Rgb): number => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.
 // taken from a standard.
 const DARK_TEXT_ABOVE = 0.4;
 
+/** Foreground for an already-parsed background, so callers holding an Rgb don't
+ *  pay for a second parse. The threshold lives here and nowhere else. */
+const readableOver = (c: Rgb): typeof BLACK | typeof WHITE => (luminance(c) > DARK_TEXT_ABOVE ? BLACK : WHITE);
+
 /**
  * Choose a black or white foreground for legibility over a given background.
  *
@@ -37,8 +41,10 @@ const DARK_TEXT_ABOVE = 0.4;
  */
 export function readableText(color: string): typeof BLACK | typeof WHITE {
   const c = rgb(color);
+  // An unparseable color says nothing about what it will be drawn on, and the
+  // caller owns that background — unlike swatchLine below, which paints its own.
   if (!c) return BLACK;
-  return luminance(c) > DARK_TEXT_ABOVE ? BLACK : WHITE;
+  return readableOver(c);
 }
 
 function to255(c: Rgb): [number, number, number] {
@@ -81,10 +87,12 @@ export function swatchLine(stop: number | string, value: string, options: Swatch
   const label = String(stop).padStart(4, " ");
   const inner = center(value, options.blockWidth ?? DEFAULT_BLOCK_WIDTH);
 
-  // One parse feeds both the background and the contrast decision.
+  // One parse feeds both the background and the contrast decision. An
+  // unparseable value paints a black block, so it takes the foreground black
+  // would get — otherwise the label is painted invisible.
   const c = rgb(value);
   const back: [number, number, number] = c ? to255(c) : [0, 0, 0];
-  const front: [number, number, number] = !c || luminance(c) > DARK_TEXT_ABOVE ? [0, 0, 0] : [255, 255, 255];
+  const front: [number, number, number] = (c ? readableOver(c) : WHITE) === BLACK ? [0, 0, 0] : [255, 255, 255];
 
   return `${label}  ${bg(back)}${fg(front)}${inner}${RESET}`;
 }

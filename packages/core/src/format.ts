@@ -15,6 +15,9 @@ export const FORMATS = [
 
 export type Format = (typeof FORMATS)[number];
 
+/** Token name used when none is given. */
+export const DEFAULT_NAME = "color";
+
 /** A token name safe to splice into a CSS custom property or an object key. */
 const IDENT = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 
@@ -48,7 +51,7 @@ export interface FormatOptions {
  * ```
  */
 export function format(scale: Ramp, target: Format, options: FormatOptions = {}): string {
-  const name = options.name ?? "color";
+  const name = options.name ?? DEFAULT_NAME;
   if (!IDENT.test(name)) {
     throw new Error(`rampkit: invalid token name "${name}" (letters, digits, - and _ only, not starting with a digit)`);
   }

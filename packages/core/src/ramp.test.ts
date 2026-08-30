@@ -1,11 +1,11 @@
 import { test, expect } from "bun:test";
 import { rgb, oklch, inGamut } from "culori";
-import { ramp, rampColors, serializeRamp, REFERENCE_L, STOPS } from "./ramp.js";
+import { ramp, rampColors, serializeRamp, REFERENCE_L, STOPS, COLOR_SPACES } from "./ramp.js";
 import { deriveReferenceL } from "../scripts/reference-l.js";
 import type { ColorSpace, Ramp } from "./ramp.js";
 
 const srgb = inGamut("rgb");
-const SPACES: ColorSpace[] = ["hex", "rgb", "hsl", "oklch"];
+const SPACES = COLOR_SPACES;
 
 /** True if a parsed color sits within sRGB, allowing for display-rounding slop. */
 const nearlyInGamut = (value: string): boolean => {
