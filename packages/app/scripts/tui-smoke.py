@@ -42,6 +42,7 @@ DELAY = float(os.environ.get("RAMPKIT_SMOKE_DELAY", "0.3"))
 APP_CWD = os.path.join(os.path.dirname(__file__), "..")
 
 # Key escape sequences.
+UP = b"\x1b[A"
 DOWN = b"\x1b[B"
 TAB = b"\x09"
 SHIFT_TAB = b"\x1b[Z"
@@ -117,6 +118,14 @@ def main():
     ok &= check("input notation switch (hex→rgb)", [b"#0ea5e9", DOWN], "input rgb", "R 14", "G 165", "B 233")
     # Out-of-range component snaps into range on Tab (999 → 255).
     ok &= check("clamps on commit (R 999→255)", [DOWN, b"999", TAB], "input rgb", "R 255")
+    # An out-of-gamut oklch() cycled to hex and back keeps its chroma: hex clips
+    # to sRGB, so this only holds because each notation's color is remembered.
+    ok &= check(
+        "notation round trip is lossless",
+        [DOWN, DOWN, DOWN, b"0.7", TAB, b"0.4", TAB, b"250", DOWN, UP],
+        "input oklch",
+        "C 0.4",
+    )
     # Output pane: ↓ cycles color syntax to rgb().
     ok &= check("output syntax switch (hex→rgb)", [b"#0ea5e9", SHIFT_TAB, DOWN], "output", "rgb(")
 

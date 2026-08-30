@@ -13,7 +13,6 @@ import { useState, useMemo, useEffect } from "react";
 import { spawn } from "node:child_process";
 import { render, Box, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { formatHex } from "culori";
 import {
   rampColors,
   serializeRamp,
@@ -29,10 +28,14 @@ import { readableText } from "@shbernal/rampkit/ansi";
 import {
   buildColor,
   clampText,
-  toComps,
+  recallComps,
+  recallHex,
+  rememberColor,
   COMP_LABELS,
   COMP_RANGES,
   INPUT_FORMATS,
+  type ColorMemo,
+  type Comps,
   type InputFormat,
 } from "./color-input";
 // The TUI is already visibly rampkit, so it shows the bare message rather than
@@ -41,8 +44,6 @@ import { errorMessage } from "./fail.js";
 
 /** Width, in characters, of each swatch's color block. */
 const BAR_WIDTH = 18;
-
-type Comps = [string, string, string];
 
 /** Step through a list with wrap-around, in either direction. */
 function cycle<T>(list: readonly T[], current: T, dir: 1 | -1): T {
@@ -137,6 +138,8 @@ function App() {
   const [inputFormat, setInputFormat] = useState<InputFormat>("hex");
   const [hexValue, setHexValue] = useState("");
   const [comps, setComps] = useState<Comps>(["", "", ""]);
+  // What the other notations were last holding, so cycling back is lossless.
+  const [memo, setMemo] = useState<ColorMemo>({});
   const [name, setName] = useState("");
   const [fieldIndex, setFieldIndex] = useState(0);
 
@@ -179,11 +182,13 @@ function App() {
     }
   }
 
-  // Re-express the current color in the next/previous input notation.
+  // Re-express the current color in the next/previous input notation, preferring
+  // what that notation last held over a fresh derivation (see color-input.ts).
   const cycleInputFormat = (dir: 1 | -1) => {
     const next = cycle(INPUT_FORMATS, inputFormat, dir);
-    if (next === "hex") setHexValue(colorStr ? (formatHex(colorStr) ?? "") : "");
-    else setComps(colorStr ? toComps(colorStr, next) : ["", "", ""]);
+    if (next === "hex") setHexValue(recallHex(memo, colorStr));
+    else setComps(recallComps(memo, next, colorStr));
+    setMemo(rememberColor(memo, inputFormat, colorStr));
     setInputFormat(next);
     setFieldIndex(0);
   };
@@ -231,7 +236,16 @@ function App() {
     return () => clearTimeout(timer);
   }, [status]);
 
-  const setComp = (i: number) => (v: string) => setComps((prev) => updateComp(prev, i, () => v));
+  // Typing a new color makes every remembered one stale, so the memo is dropped
+  // and the other notations go back to being derived on demand.
+  const editHex = (v: string) => {
+    setHexValue(v);
+    setMemo({});
+  };
+  const setComp = (i: number) => (v: string) => {
+    setComps((prev) => updateComp(prev, i, () => v));
+    setMemo({});
+  };
 
   const inputActive = pane === "input";
   const nameFocused = inputActive && fieldIndex === valueFieldCount;
@@ -251,7 +265,7 @@ function App() {
           {inputFormat === "hex" ? (
             <TextInput
               value={hexValue}
-              onChange={setHexValue}
+              onChange={editHex}
               focus={inputActive && fieldIndex === 0}
               placeholder="#451dc7"
             />

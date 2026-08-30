@@ -1,7 +1,18 @@
 import { test, expect } from "bun:test";
 import { COLOR_SPACES } from "@shbernal/rampkit";
 import { rgb } from "culori";
-import { buildColor, clampNum, clampText, toComps, COMP_RANGES, COMPONENT_FORMATS, COMP_LABELS } from "./color-input";
+import {
+  buildColor,
+  clampNum,
+  clampText,
+  recallComps,
+  recallHex,
+  rememberColor,
+  toComps,
+  COMP_RANGES,
+  COMPONENT_FORMATS,
+  COMP_LABELS,
+} from "./color-input";
 
 // buildColor — assembling + clamping the value handed to the engine.
 
@@ -108,4 +119,34 @@ test("clampNum leaves an in-range hue bit-for-bit unchanged", () => {
   expect(clampNum(360, hue360)).toBe(0);
   expect(clampNum(-90, hue360)).toBe(270);
   expect(clampNum(450, hue360)).toBe(90);
+});
+
+// recallHex / recallComps / rememberColor — surviving a notation round trip.
+
+test("an out-of-gamut color survives a trip through hex", () => {
+  const typed = "oklch(0.7 0.4 250)";
+  // Leaving oklch for hex: the hex field shows the sRGB-clipped rendering...
+  const memo = rememberColor({}, "oklch", typed);
+  const asHex = recallHex(memo, typed);
+  expect(toComps(asHex, "oklch")[1]).not.toBe("0.4");
+  // ...but coming back reads the memo, not that clipped hex.
+  expect(recallComps(memo, "oklch", asHex)).toEqual(["0.7", "0.4", "250"]);
+  // Without the memo it would not: that is the whole point of keeping one.
+  expect(recallComps({}, "oklch", asHex)).not.toEqual(["0.7", "0.4", "250"]);
+});
+
+test("the hex field keeps the CSS color string the user typed", () => {
+  const memo = rememberColor({}, "hex", "rebeccapurple");
+  expect(recallHex(memo, "oklch(0.44 0.18 303)")).toBe("rebeccapurple");
+  // With nothing remembered, a color from another notation is rendered to hex.
+  expect(recallHex({}, "rebeccapurple")).toBe("#663399");
+});
+
+test("an incomplete color is not worth remembering", () => {
+  expect(rememberColor({ hex: "#0ea5e9" }, "oklch", "")).toEqual({ hex: "#0ea5e9" });
+});
+
+test("nothing remembered and nothing current leaves the fields empty", () => {
+  expect(recallHex({}, "")).toBe("");
+  expect(recallComps({}, "rgb", "")).toEqual(["", "", ""]);
 });

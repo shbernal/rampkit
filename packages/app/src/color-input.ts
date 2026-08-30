@@ -4,7 +4,7 @@
 // directly (see color-input.test.ts) — the component in tui.tsx is a thin shell
 // over these functions.
 
-import { oklch, rgb, hsl } from "culori";
+import { oklch, rgb, hsl, formatHex } from "culori";
 import { COLOR_SPACES } from "@shbernal/rampkit";
 import type { ColorSpace } from "@shbernal/rampkit";
 
@@ -22,7 +22,10 @@ export type InputFormat = ColorSpace;
 export type ComponentFormat = Exclude<ColorSpace, "hex">;
 export const COMPONENT_FORMATS = INPUT_FORMATS.filter((f): f is ComponentFormat => f !== "hex");
 
-export const COMP_LABELS: Record<ComponentFormat, [string, string, string]> = {
+/** The three component fields of a non-hex notation, in label order. */
+export type Comps = [string, string, string];
+
+export const COMP_LABELS: Record<ComponentFormat, Comps> = {
   oklch: ["L", "C", "H"],
   rgb: ["R", "G", "B"],
   hsl: ["H", "S", "L"],
@@ -82,7 +85,7 @@ export function clampText(raw: string, r: Range): string {
 /** Assemble a CSS color string from the active input notation's field values,
  *  clamping each component so the engine never receives out-of-range values.
  *  Returns "" when a component is missing or non-numeric (treated as incomplete). */
-export function buildColor(fmt: InputFormat, hex: string, comps: [string, string, string]): string {
+export function buildColor(fmt: InputFormat, hex: string, comps: Comps): string {
   if (fmt === "hex") return hex.trim();
   const ranges = COMP_RANGES[fmt];
   const vals: number[] = [];
@@ -106,7 +109,7 @@ export function buildColor(fmt: InputFormat, hex: string, comps: [string, string
 }
 
 /** Re-express a color string as the three component fields of a target notation. */
-export function toComps(color: string, fmt: ComponentFormat): [string, string, string] {
+export function toComps(color: string, fmt: ComponentFormat): Comps {
   switch (fmt) {
     case "oklch": {
       const c = oklch(color);
@@ -126,3 +129,31 @@ export function toComps(color: string, fmt: ComponentFormat): [string, string, s
     }
   }
 }
+
+// Switching notation re-expresses the same color, but the round trip is not
+// free: rendering to hex clips to sRGB, so `oklch(0.7 0.4 250)` typed in the
+// oklch fields, cycled to hex and cycled back would come back a different
+// color. So each notation's color is remembered as it was last held, and a
+// switch restores that instead of re-deriving. Editing any field clears the
+// whole memo — see tui.tsx — so a remembered value can only ever describe the
+// color currently on screen.
+
+/** The color each input notation last held, keyed by notation. */
+export type ColorMemo = Partial<Record<InputFormat, string>>;
+
+/** Text for the hex field when switching to `hex`. The field takes any CSS
+ *  color string, so a remembered value is already its own text and is returned
+ *  verbatim — only a value derived from another notation needs rendering. */
+export const recallHex = (memo: ColorMemo, current: string): string =>
+  memo.hex ?? (current ? (formatHex(current) ?? "") : "");
+
+/** Text for the three component fields when switching to `fmt`. */
+export function recallComps(memo: ColorMemo, fmt: ComponentFormat, current: string): Comps {
+  const source = memo[fmt] ?? current;
+  return source ? toComps(source, fmt) : ["", "", ""];
+}
+
+/** Record `color` as what `from` held. An incomplete color is not worth
+ *  remembering, so the memo passes through unchanged. */
+export const rememberColor = (memo: ColorMemo, from: InputFormat, color: string): ColorMemo =>
+  color ? { ...memo, [from]: color } : memo;
