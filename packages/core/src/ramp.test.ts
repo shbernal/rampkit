@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
-import { rgb, inGamut } from "culori";
+import { rgb, oklch, inGamut } from "culori";
 import { ramp, rampColors, serializeRamp, STOPS } from "./ramp.js";
-import type { ColorSpace } from "./ramp.js";
+import type { ColorSpace, Ramp } from "./ramp.js";
 
 const srgb = inGamut("rgb");
 const SPACES: ColorSpace[] = ["hex", "rgb", "hsl", "oklch"];
@@ -44,15 +44,18 @@ test("every stop is a valid in-gamut sRGB hex", () => {
   }
 });
 
+/** Perceptual lightness of a stop. Summing r+g+b is not lightness — it can call
+ *  a perceptually non-monotonic ramp monotonic. */
+const lightness = (value: string): number => oklch(value)!.l;
+
+/** Assert a ramp never gets lighter as the stop number grows. */
+const expectMonotonic = (scale: Ramp): void => {
+  const ls = STOPS.map((s) => lightness(scale[s]));
+  for (let i = 1; i < ls.length; i++) expect(ls[i]!).toBeLessThanOrEqual(ls[i - 1]!);
+};
+
 test("lightness decreases monotonically from 50 to 950", () => {
-  const scale = ramp("#0ea5e9");
-  const lums = STOPS.map((s) => {
-    const c = rgb(scale[s])!;
-    return c.r + c.g + c.b;
-  });
-  for (let i = 1; i < lums.length; i++) {
-    expect(lums[i]!).toBeLessThanOrEqual(lums[i - 1]!);
-  }
+  expectMonotonic(ramp("#0ea5e9"));
 });
 
 test("throws on unparseable input", () => {
@@ -178,13 +181,7 @@ test("stays monotonic for any input and anchor, including past lMin/lMax", () =>
   for (const input of inputs) {
     for (const anchor of STOPS) {
       const scale = ramp(input, { anchor });
-      const lums = STOPS.map((s) => {
-        const c = rgb(scale[s])!;
-        return c.r + c.g + c.b;
-      });
-      for (let i = 1; i < lums.length; i++) {
-        expect(lums[i]!).toBeLessThanOrEqual(lums[i - 1]!);
-      }
+      expectMonotonic(scale);
       for (const value of Object.values(scale)) {
         expect(nearlyInGamut(value)).toBe(true);
       }
@@ -252,5 +249,50 @@ test("rampColors yields gamut-mapped oklch colors, not strings", () => {
   for (const stop of STOPS) {
     expect(colors[stop].mode).toBe("oklch");
     expect(nearlyInGamut(serializeRamp({ anchor: 500, colors }, { colorSpace: "hex" })[stop])).toBe(true);
+  }
+});
+
+// Anchor selection — "preserve the input at its natural stop" is the headline
+// promise, and rampColors is what makes the chosen stop observable.
+
+test("a stop's own reference lightness picks that stop", () => {
+  const REFERENCE_L: Record<number, number> = {
+    50: 0.971,
+    100: 0.936,
+    200: 0.885,
+    300: 0.808,
+    400: 0.704,
+    500: 0.637,
+    600: 0.577,
+    700: 0.505,
+    800: 0.443,
+    900: 0.391,
+    950: 0.262,
+  };
+  for (const stop of STOPS) {
+    expect(rampColors(`oklch(${REFERENCE_L[stop]} 0 0)`).anchor).toBe(stop);
+  }
+});
+
+test("the anchor only ever moves darker as the input darkens", () => {
+  // Near-equidistant lightnesses fall whichever way float comparison lands, so
+  // the guarantee worth pinning is the ordering, not any single tie.
+  let previous = 0;
+  for (let l = 1; l >= 0; l -= 0.005) {
+    const anchor = rampColors(`oklch(${l.toFixed(3)} 0 0)`).anchor;
+    expect(anchor).toBeGreaterThanOrEqual(previous);
+    previous = anchor;
+  }
+  expect(previous).toBe(950);
+});
+
+test("the extremes land on the end stops", () => {
+  expect(rampColors("#ffffff").anchor).toBe(50);
+  expect(rampColors("#000000").anchor).toBe(950);
+});
+
+test("an explicit anchor overrides selection entirely", () => {
+  for (const stop of STOPS) {
+    expect(rampColors("#ffffff", { anchor: stop }).anchor).toBe(stop);
   }
 });

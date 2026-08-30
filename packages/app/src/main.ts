@@ -15,8 +15,8 @@ async function main() {
     return;
   }
 
-  const { runCli } = await import("./cli.js");
-  await runCli(argv, pkg.version);
+  const { runCli, processIo } = await import("./cli.js");
+  process.exitCode = await runCli(argv, pkg.version, processIo);
 }
 
 main().catch(fail);

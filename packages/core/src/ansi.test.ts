@@ -26,6 +26,28 @@ test("blocks grow past blockWidth to fit a long value", () => {
   expect(visible(swatchLine(50, "#ffffff", { blockWidth: 30 }))).toBe(6 + 30);
 });
 
+test("emits a truecolor background/foreground pair and resets", () => {
+  const line = swatchLine(500, "#0ea5e9");
+  expect(line).toContain("\x1b[48;2;14;165;233m");
+  expect(line.includes("\x1b[38;2;0;0;0m") || line.includes("\x1b[38;2;255;255;255m")).toBe(true);
+  expect(line).toEndWith("\x1b[0m");
+  expect(line).toStartWith(" 500  ");
+});
+
+test("an unparseable value degrades to a black block instead of throwing", () => {
+  const line = swatchLine(500, "not-a-color");
+  expect(line).toContain("\x1b[48;2;0;0;0m");
+  expect(line).toContain("not-a-color");
+});
+
+test("the foreground flips either side of the threshold", () => {
+  // Around the tuned 0.4 crossover, not WCAG's ~0.179.
+  const light = swatchLine(500, "oklch(0.75 0 0)");
+  const dark = swatchLine(500, "oklch(0.6 0 0)");
+  expect(light).toContain("\x1b[38;2;0;0;0m");
+  expect(dark).toContain("\x1b[38;2;255;255;255m");
+});
+
 test("rows run lightest to darkest", () => {
   const scale = ramp("#0ea5e9");
   const lines = swatches(scale).split("\n");

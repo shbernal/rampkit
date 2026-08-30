@@ -22,7 +22,9 @@ This is a [bun](https://bun.sh) workspace monorepo.
   - `src/*.test.ts` — `bun test` suites.
 - `packages/app` — `@shbernal/rampkit-cli`, the `rampkit` binary.
   - `src/main.ts` — entry; dispatches to CLI or TUI.
-  - `src/cli.ts` — argument parsing, stdin/stdout handling.
+  - `src/cli.ts` — argument parsing, stdin/stdout handling; writes through a
+    `CliIo` sink and returns an exit code, so it is testable
+    (`src/cli.test.ts`).
   - `src/tui.tsx` — interactive [Ink](https://github.com/vadimdemedes/ink) React TUI.
   - `src/color-input.ts` — pure logic for the TUI input pane (notation
     conversion, range clamping); unit-tested in `src/color-input.test.ts`.
@@ -35,7 +37,7 @@ Run from the repo root:
 ```bash
 bun install
 bun run build      # tsc build for core, bundled bin for app
-bun test           # unit suites (core ramp/format + app color-input)
+bun test           # unit suites (core ramp/format/ansi + app cli/color-input)
 bun run typecheck  # tsc --noEmit across packages
 bun run dev        # run the app from source (TUI)
 bun run format     # oxfmt across the repo (--check in CI)
