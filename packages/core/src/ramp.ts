@@ -9,10 +9,17 @@
 //        anchor    -> input lightness
 //        stop 1000 -> lMin (near black)
 //      (stops 0 and 1000 are virtual bookends so the real 50/950 ends stay off
-//      pure white/black.)
+//      pure white/black. An input lighter than lMax or darker than lMin widens
+//      the bookend it sits past, so the ramp compresses instead of inverting.)
 //   4. Keep the input hue (optional per-stop drift) and chroma (optional global
 //      multiplier), then gamut-map each stop into sRGB by reducing chroma —
-//      which naturally tapers saturation at the light and dark extremes.
+//      which naturally tapers saturation at the light and dark extremes. The
+//      anchor is gamut-mapped too: a no-op for in-gamut input, and the only way
+//      an out-of-gamut input stays consistent with its neighbours.
+//
+// Lightness is distributed linearly in stop index between those anchors.
+// REFERENCE_L is consulted only to pick the anchor, so a generated ramp sits
+// alongside the Tailwind families without tracking their exact curve.
 
 import { oklch, formatHex, formatRgb, formatHsl, clampChroma } from "culori";
 import type { Color } from "culori";
@@ -74,12 +81,15 @@ export interface RampOptions {
    */
   anchor?: Stop;
   /**
-   * OKLCH lightness at the virtual stop 0 (near white).
+   * OKLCH lightness at the virtual stop 0 (near white). Widened automatically
+   * when the input is lighter than this, so the ramp never inverts.
    * @defaultValue 0.995
    */
   lMax?: number;
   /**
-   * OKLCH lightness at the virtual stop 1000 (near black).
+   * OKLCH lightness at the virtual stop 1000 (near black). Widened
+   * automatically when the input is darker than this, so the ramp never
+   * inverts.
    * @defaultValue 0.18
    */
   lMin?: number;
@@ -138,12 +148,13 @@ const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
  * @param input - Any CSS color string (e.g. `"#451dc7"`, `"rebeccapurple"`, `"oklch(0.6 0.2 270)"`).
  * @param options - See {@link RampOptions}.
  * @returns A {@link Ramp}: `{ 50, 100, …, 950 }` mapping each stop to a color string.
- * @throws If `input` cannot be parsed as a color.
+ * @throws If `input` cannot be parsed as a color, or if `lMin`/`lMax` are not
+ *   finite numbers with `lMin < lMax`.
  *
  * @example Default ramp, preserving the input at its nearest stop
  * ```ts
  * ramp("#451dc7");
- * // { 50: "#eff0ff", …, 700: "#451dc7", …, 950: "#1c0061" }
+ * // { 50: "#eff0ff", …, 800: "#451dc7", …, 950: "#1c0061" }
  * ```
  *
  * @example Force the anchor stop and emit bare uppercase hex (Office/PptxGenJS form)
@@ -160,8 +171,18 @@ export function ramp(input: string, options: RampOptions = {}): Ramp {
   const baseC = base.c;
   const baseH = base.h ?? 0;
 
-  const lMax = options.lMax ?? 0.995;
-  const lMin = options.lMin ?? 0.18;
+  const lMaxOpt = options.lMax ?? 0.995;
+  const lMinOpt = options.lMin ?? 0.18;
+  if (!Number.isFinite(lMinOpt) || !Number.isFinite(lMaxOpt) || lMinOpt >= lMaxOpt) {
+    throw new Error(`rampkit: lMin (${lMinOpt}) must be a finite number below lMax (${lMaxOpt})`);
+  }
+
+  // The input's own lightness may sit outside [lMin, lMax] — a near-white color
+  // forced to a dark stop, say. Let it define the extreme it sits past, so the
+  // ramp compresses on the short side instead of inverting or collapsing.
+  const lMax = Math.max(lMaxOpt, baseL);
+  const lMin = Math.min(lMinOpt, baseL);
+
   const hueShift = options.hueShift ?? 0;
   const chromaMul = options.chroma ?? 1;
   const anchor = options.anchor ?? nearestStop(baseL);
@@ -171,16 +192,20 @@ export function ramp(input: string, options: RampOptions = {}): Ramp {
 
   const result = {} as Ramp;
   for (const stop of STOPS) {
-    if (stop === anchor) {
-      result[stop] = serialize(input, colorSpace, hexHash, hexCase);
-      continue;
-    }
+    // The anchor keeps the input's own lightness, chroma and hue untouched; it
+    // still goes through the gamut map, which is a no-op for in-gamut input and
+    // keeps an out-of-gamut input consistent with its neighbours.
+    const isAnchor = stop === anchor;
 
-    const l = stop < anchor ? lerp(lMax, baseL, stop / anchor) : lerp(baseL, lMin, (stop - anchor) / (1000 - anchor));
+    const l = isAnchor
+      ? baseL
+      : stop < anchor
+        ? lerp(lMax, baseL, stop / anchor)
+        : lerp(baseL, lMin, (stop - anchor) / (1000 - anchor));
 
     const dist = (stop - anchor) / 1000;
     const h = baseH + hueShift * dist;
-    const c = baseC * chromaMul;
+    const c = isAnchor ? baseC : baseC * chromaMul;
 
     const inGamut = clampChroma({ mode: "oklch", l, c, h }, "oklch");
     result[stop] = serialize(inGamut, colorSpace, hexHash, hexCase);

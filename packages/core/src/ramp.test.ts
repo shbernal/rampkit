@@ -131,3 +131,80 @@ test("hex options are ignored for non-hex color spaces", () => {
     expect(value).toMatch(/^rgb\(/);
   }
 });
+
+test("gamut-maps an out-of-gamut input at its anchor stop", () => {
+  const scale = ramp("oklch(0.7 0.4 250)", { colorSpace: "oklch", anchor: 400 });
+  for (const value of Object.values(scale)) {
+    expect(nearlyInGamut(value)).toBe(true);
+  }
+  // The anchor used to keep the raw chroma, leaving it far outside the sRGB
+  // boundary its neighbours were clamped to.
+  const anchorChroma = Number(scale[400].slice(6, -1).split(" ")[1]);
+  const neighbourChroma = Number(scale[300].slice(6, -1).split(" ")[1]);
+  expect(anchorChroma).toBeLessThan(neighbourChroma * 2);
+});
+
+test("an out-of-gamut input yields no duplicated stops", () => {
+  const scale = ramp("oklch(0.7 0.4 250)");
+  expect(new Set(Object.values(scale)).size).toBe(STOPS.length);
+});
+
+test("round-trips an in-gamut input at its anchor in every color space", () => {
+  const input = "#451dc7";
+  const want = rgb(input)!;
+  for (const space of SPACES) {
+    for (const anchor of STOPS) {
+      const got = rgb(ramp(input, { colorSpace: space, anchor })[anchor])!;
+      expect(got.r).toBeCloseTo(want.r, 2);
+      expect(got.g).toBeCloseTo(want.g, 2);
+      expect(got.b).toBeCloseTo(want.b, 2);
+    }
+  }
+  // Hex is exact, not merely close.
+  expect(ramp(input, { anchor: 300 })[300]).toBe(input);
+});
+
+test("stays monotonic for any input and anchor, including past lMin/lMax", () => {
+  const inputs = [
+    "#000000",
+    "#ffffff",
+    "#0ea5e9",
+    "#451dc7",
+    "oklch(0.7 0.4 250)",
+    "oklch(0.99 0.02 90)",
+    "oklch(0.05 0.01 0)",
+    "rebeccapurple",
+  ];
+  for (const input of inputs) {
+    for (const anchor of STOPS) {
+      const scale = ramp(input, { anchor });
+      const lums = STOPS.map((s) => {
+        const c = rgb(scale[s])!;
+        return c.r + c.g + c.b;
+      });
+      for (let i = 1; i < lums.length; i++) {
+        expect(lums[i]!).toBeLessThanOrEqual(lums[i - 1]!);
+      }
+      for (const value of Object.values(scale)) {
+        expect(nearlyInGamut(value)).toBe(true);
+      }
+    }
+  }
+});
+
+test("collapses rather than inverts when the input has no room left", () => {
+  // Black at stop 50 leaves nothing darker to reach for, so the ramp flattens;
+  // it used to invert instead, getting *lighter* as the stop number grew.
+  const flat = ramp("#000000", { anchor: 50 });
+  expect(new Set(Object.values(flat))).toEqual(new Set(["#000000"]));
+  const white = ramp("#ffffff", { anchor: 950 });
+  expect(new Set(Object.values(white))).toEqual(new Set(["#ffffff"]));
+});
+
+test("rejects a lightness range that is inverted, empty or non-finite", () => {
+  expect(() => ramp("#0ea5e9", { lMin: 0.9, lMax: 0.2 })).toThrow(/lMin/);
+  expect(() => ramp("#0ea5e9", { lMin: 0.5, lMax: 0.5 })).toThrow(/lMin/);
+  expect(() => ramp("#0ea5e9", { lMin: Number.NaN })).toThrow(/lMin/);
+  expect(() => ramp("#0ea5e9", { lMax: Number.POSITIVE_INFINITY })).toThrow(/lMin/);
+  expect(() => ramp("#0ea5e9", { lMin: 0.2, lMax: 0.9 })).not.toThrow();
+});
