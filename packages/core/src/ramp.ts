@@ -171,11 +171,21 @@ export interface RampResult {
   colors: Record<Stop, Color>;
 }
 
-function nearestStop(l: number): Stop {
+/**
+ * The stop whose reference lightness sits closest to `l` — the rule behind an
+ * unforced anchor. Ties keep the lighter stop, since STOPS is scanned in order.
+ *
+ * Exported for `scripts/reference-l.ts`, which scores candidate tables through
+ * this function so the score measures the picker that ships. Internal: it is
+ * not re-exported from `index.ts`.
+ *
+ * @param table - Reference lightness per stop. Defaults to {@link REFERENCE_L}.
+ */
+export function nearestStop(l: number, table: Record<Stop, number> = REFERENCE_L): Stop {
   let best: Stop = 500;
   let bestDelta = Infinity;
   for (const stop of STOPS) {
-    const delta = Math.abs(REFERENCE_L[stop] - l);
+    const delta = Math.abs(table[stop] - l);
     if (delta < bestDelta) {
       bestDelta = delta;
       best = stop;

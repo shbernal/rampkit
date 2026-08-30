@@ -11,7 +11,7 @@
 
 import { oklch } from "culori";
 import palette from "tailwindcss/colors";
-import { STOPS, type Stop } from "../src/ramp.js";
+import { STOPS, nearestStop, type Stop } from "../src/ramp.js";
 
 /** One Tailwind family: `{ 50: "oklch(…)", …, 950: "oklch(…)" }`. */
 type Family = Record<string, string>;
@@ -21,7 +21,12 @@ type Family = Record<string, string>;
  * carries `inherit`/`transparent`/`black`/`white`, which are strings or
  * keywords rather than 50–950 scales.
  */
+let cached: Record<string, Family> | undefined;
 export function families(): Record<string, Family> {
+  return (cached ??= collect());
+}
+
+function collect(): Record<string, Family> {
   const out: Record<string, Family> = {};
   for (const [name, value] of Object.entries(palette as Record<string, unknown>)) {
     if (typeof value !== "object" || value === null) continue;
@@ -31,14 +36,17 @@ export function families(): Record<string, Family> {
   return out;
 }
 
+/** OKLCH lightness of one family's stop. */
+function lightness(family: Family, stop: Stop): number {
+  const color = oklch(family[stop]);
+  if (!color) throw new Error(`reference-l: could not parse ${family[stop]}`);
+  return color.l;
+}
+
 /** OKLCH lightness of every family at one stop, ascending. */
 function lightnesses(stop: Stop): number[] {
   return Object.values(families())
-    .map((family) => {
-      const color = oklch(family[stop]);
-      if (!color) throw new Error(`reference-l: could not parse ${family[stop]}`);
-      return color.l;
-    })
+    .map((family) => lightness(family, stop))
     .toSorted((a, b) => a - b);
 }
 
@@ -60,15 +68,14 @@ export function deriveReferenceL(): Record<Stop, number> {
   return table;
 }
 
-/** Share of family/stop pairs a table maps back to the stop they came from. */
+/** Share of family/stop pairs a table maps back to the stop they came from,
+ *  measured through the anchor picker that ships rather than a copy of it. */
 function score(table: Record<Stop, number>): number {
   const all = Object.values(families());
   let hits = 0;
   for (const family of all) {
     for (const stop of STOPS) {
-      const l = oklch(family[stop])!.l;
-      const nearest = STOPS.reduce((best, s) => (Math.abs(table[s] - l) < Math.abs(table[best] - l) ? s : best));
-      if (nearest === stop) hits++;
+      if (nearestStop(lightness(family, stop), table) === stop) hits++;
     }
   }
   return hits / (all.length * STOPS.length);

@@ -1,8 +1,8 @@
 import { test, expect } from "bun:test";
 import { rgb, oklch, inGamut } from "culori";
-import { ramp, rampColors, serializeRamp, REFERENCE_L, STOPS, COLOR_SPACES } from "./ramp.js";
+import { ramp, rampColors, serializeRamp, nearestStop, REFERENCE_L, STOPS, COLOR_SPACES } from "./ramp.js";
 import { deriveReferenceL } from "../scripts/reference-l.js";
-import type { ColorSpace, Ramp } from "./ramp.js";
+import type { ColorSpace, Ramp, Stop } from "./ramp.js";
 
 const srgb = inGamut("rgb");
 const SPACES = COLOR_SPACES;
@@ -261,6 +261,21 @@ test("rampColors yields gamut-mapped oklch colors, not strings", () => {
 
 // Anchor selection — "preserve the input at its natural stop" is the headline
 // promise, and rampColors is what makes the chosen stop observable.
+
+test("nearestStop scores against whichever table it is given", () => {
+  // The table parameter exists so scripts/reference-l.ts can measure candidate
+  // tables through the shipped picker; a table nothing else uses has to drive it.
+  const reversed = STOPS.toReversed();
+  const inverted = Object.fromEntries(STOPS.map((stop, i) => [stop, REFERENCE_L[reversed[i]!]])) as Record<
+    Stop,
+    number
+  >;
+  for (const [i, stop] of STOPS.entries()) {
+    expect(nearestStop(REFERENCE_L[stop], inverted)).toBe(reversed[i]!);
+  }
+  // Ties keep the lighter stop, since STOPS is scanned lightest-first.
+  expect(nearestStop(0.5, { ...REFERENCE_L, 50: 0.5, 950: 0.5 })).toBe(50);
+});
 
 test("a stop's own reference lightness picks that stop", () => {
   // Non-trivial despite reading the same table selection does: it only holds
