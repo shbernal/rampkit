@@ -3,6 +3,7 @@
 // stdin and stdout both TTYs). Any arguments, or piped stdin/stdout, run the CLI.
 
 import pkg from "../package.json" with { type: "json" };
+import { fail } from "./fail.js";
 
 async function main() {
   const argv = process.argv.slice(2);
@@ -18,7 +19,4 @@ async function main() {
   await runCli(argv, pkg.version);
 }
 
-main().catch((err) => {
-  process.stderr.write(`rampkit: ${err instanceof Error ? err.message : String(err)}\n`);
-  process.exit(1);
-});
+main().catch(fail);

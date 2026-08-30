@@ -98,11 +98,13 @@ export interface RampOptions {
   lMin?: number;
   /**
    * Degrees of hue drift applied across the full 0→1000 range (0 = single hue).
+   * Any finite value works; the hue wraps.
    * @defaultValue 0
    */
   hueShift?: number;
   /**
-   * Global multiplier on the input chroma.
+   * Global multiplier on the input chroma. Must be finite and non-negative;
+   * values past the sRGB limit are gamut-mapped back, not rejected.
    * @defaultValue 1
    */
   chroma?: number;
@@ -151,8 +153,9 @@ const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
  * @param input - Any CSS color string (e.g. `"#451dc7"`, `"rebeccapurple"`, `"oklch(0.6 0.2 270)"`).
  * @param options - See {@link RampOptions}.
  * @returns A {@link Ramp}: `{ 50, 100, …, 950 }` mapping each stop to a color string.
- * @throws If `input` cannot be parsed as a color, or if `lMin`/`lMax` are not
- *   finite numbers with `lMin < lMax`.
+ * @throws If `input` cannot be parsed as a color, if `lMin`/`lMax` are not
+ *   finite numbers with `lMin < lMax`, or if `chroma`/`hueShift` are not finite
+ *   (`chroma` must also be non-negative).
  *
  * @example Default ramp, preserving the input at its nearest stop
  * ```ts
@@ -188,6 +191,12 @@ export function ramp(input: string, options: RampOptions = {}): Ramp {
 
   const hueShift = options.hueShift ?? 0;
   const chromaMul = options.chroma ?? 1;
+  if (!Number.isFinite(hueShift)) throw new Error(`rampkit: hueShift must be a finite number, got ${hueShift}`);
+  // A non-finite multiplier sends clampChroma searching against an infinite
+  // bound, which never converges — it hangs rather than returning nonsense.
+  if (!Number.isFinite(chromaMul) || chromaMul < 0) {
+    throw new Error(`rampkit: chroma must be a finite number of at least 0, got ${chromaMul}`);
+  }
   const anchor = options.anchor ?? nearestStop(baseL);
   const colorSpace = options.colorSpace ?? "hex";
   const hexHash = options.hexHash ?? true;

@@ -208,3 +208,15 @@ test("rejects a lightness range that is inverted, empty or non-finite", () => {
   expect(() => ramp("#0ea5e9", { lMax: Number.POSITIVE_INFINITY })).toThrow(/lMin/);
   expect(() => ramp("#0ea5e9", { lMin: 0.2, lMax: 0.9 })).not.toThrow();
 });
+
+test("rejects option values that would never converge", () => {
+  // An infinite multiplier sent the gamut search against an infinite bound and
+  // hung the process rather than erroring.
+  expect(() => ramp("#0ea5e9", { chroma: Number.POSITIVE_INFINITY })).toThrow(/chroma/);
+  expect(() => ramp("#0ea5e9", { chroma: Number.NaN })).toThrow(/chroma/);
+  expect(() => ramp("#0ea5e9", { chroma: -1 })).toThrow(/chroma/);
+  expect(() => ramp("#0ea5e9", { hueShift: Number.POSITIVE_INFINITY })).toThrow(/hueShift/);
+  expect(() => ramp("#0ea5e9", { hueShift: Number.NaN })).toThrow(/hueShift/);
+  // Large but finite values still resolve.
+  expect(() => ramp("#0ea5e9", { chroma: 1e6, hueShift: -1e6 })).not.toThrow();
+});
