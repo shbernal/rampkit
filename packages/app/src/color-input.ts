@@ -8,27 +8,27 @@ import { oklch, rgb, hsl } from "culori";
 
 // Input notations the color can be entered in. `hex` is a single free-text field
 // (and accepts any CSS color string); the rest are three numeric components.
-export type InputFormat = "hex" | "oklch" | "rgb" | "hsl";
-export const INPUT_FORMATS: InputFormat[] = ["hex", "oklch", "rgb", "hsl"];
-export const COMP_LABELS: Record<InputFormat, [string, string, string]> = {
-  hex: ["", "", ""],
+export const INPUT_FORMATS = ["hex", "oklch", "rgb", "hsl"] as const;
+export type InputFormat = (typeof INPUT_FORMATS)[number];
+
+/** The notations made of three numeric fields — everything except `hex`. The
+ *  component maps below are keyed on this, so `hex` cannot reach them. */
+export type ComponentFormat = Exclude<InputFormat, "hex">;
+export const COMPONENT_FORMATS = INPUT_FORMATS.filter((f): f is ComponentFormat => f !== "hex");
+
+export const COMP_LABELS: Record<ComponentFormat, [string, string, string]> = {
   oklch: ["L", "C", "H"],
   rgb: ["R", "G", "B"],
   hsl: ["H", "S", "L"],
 };
 
-// Valid range per component. Hue ranges `wrap` (mod max) rather than clamp.
+// Valid range per component. Hue ranges `wrap` (mod the span) rather than clamp.
 export interface Range {
   min: number;
   max: number;
   wrap?: boolean;
 }
-export const COMP_RANGES: Record<InputFormat, [Range, Range, Range]> = {
-  hex: [
-    { min: 0, max: 0 },
-    { min: 0, max: 0 },
-    { min: 0, max: 0 },
-  ],
+export const COMP_RANGES: Record<ComponentFormat, [Range, Range, Range]> = {
   oklch: [
     { min: 0, max: 1 },
     { min: 0, max: 0.4 },
@@ -53,12 +53,14 @@ export const COMP_RANGES: Record<InputFormat, [Range, Range, Range]> = {
 const round = (n: number, digits: number): string => String(Number(n.toPrecision(digits)));
 
 /** Bring a number into a component's range; hue wraps, everything else clamps.
- *  The wrap is a single remainder (plus a correction for negatives) so values
- *  already in range pass through exactly, without float-rounding noise. */
+ *  The wrap is one remainder over the span (plus a correction for negatives), so
+ *  for a range starting at 0 — every wrapping range here — a value already in
+ *  range passes through exactly, without float-rounding noise. */
 export const clampNum = (n: number, r: Range): number => {
   if (!r.wrap) return Math.min(r.max, Math.max(r.min, n));
-  const m = n % r.max;
-  return m < 0 ? m + r.max : m;
+  const span = r.max - r.min;
+  const m = (n - r.min) % span;
+  return r.min + (m < 0 ? m + span : m);
 };
 
 /** Clamp a field's text on commit, preserving the user's exact text when it's
@@ -84,26 +86,37 @@ export function buildColor(fmt: InputFormat, hex: string, comps: [string, string
     if (raw === "" || !Number.isFinite(n)) return "";
     vals.push(clampNum(n, ranges[i]!));
   }
+  // Exhaustive over ComponentFormat: adding a notation is a compile error here
+  // and in toComps, rather than quietly falling through to hsl().
   const [a, b, c] = vals;
-  if (fmt === "oklch") return `oklch(${a} ${b} ${c})`;
-  if (fmt === "rgb") return `rgb(${a} ${b} ${c})`;
-  return `hsl(${a} ${b}% ${c}%)`;
+  switch (fmt) {
+    case "oklch":
+      return `oklch(${a} ${b} ${c})`;
+    case "rgb":
+      return `rgb(${a} ${b} ${c})`;
+    case "hsl":
+      return `hsl(${a} ${b}% ${c}%)`;
+  }
 }
 
 /** Re-express a color string as the three component fields of a target notation. */
-export function toComps(color: string, fmt: InputFormat): [string, string, string] {
-  if (fmt === "oklch") {
-    const c = oklch(color);
-    return c ? [round(c.l, 4), round(c.c, 4), round(c.h ?? 0, 4)] : ["", "", ""];
+export function toComps(color: string, fmt: ComponentFormat): [string, string, string] {
+  switch (fmt) {
+    case "oklch": {
+      const c = oklch(color);
+      return c ? [round(c.l, 4), round(c.c, 4), round(c.h ?? 0, 4)] : ["", "", ""];
+    }
+    case "rgb": {
+      const c = rgb(color);
+      return c
+        ? [String(Math.round(c.r * 255)), String(Math.round(c.g * 255)), String(Math.round(c.b * 255))]
+        : ["", "", ""];
+    }
+    case "hsl": {
+      const c = hsl(color);
+      return c
+        ? [String(Math.round(c.h ?? 0)), String(Math.round(c.s * 100)), String(Math.round(c.l * 100))]
+        : ["", "", ""];
+    }
   }
-  if (fmt === "rgb") {
-    const c = rgb(color);
-    return c
-      ? [String(Math.round(c.r * 255)), String(Math.round(c.g * 255)), String(Math.round(c.b * 255))]
-      : ["", "", ""];
-  }
-  const c = hsl(color);
-  return c
-    ? [String(Math.round(c.h ?? 0)), String(Math.round(c.s * 100)), String(Math.round(c.l * 100))]
-    : ["", "", ""];
 }

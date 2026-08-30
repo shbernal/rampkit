@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import { rgb } from "culori";
-import { buildColor, clampText, toComps, COMP_RANGES, INPUT_FORMATS, COMP_LABELS } from "./color-input";
+import { buildColor, clampNum, clampText, toComps, COMP_RANGES, COMPONENT_FORMATS, COMP_LABELS } from "./color-input";
 
 // buildColor — assembling + clamping the value handed to the engine.
 
@@ -81,9 +81,29 @@ test("toComps returns blanks for an unparseable color", () => {
 
 // Tables stay aligned across notations.
 
-test("every input notation has three component labels and ranges", () => {
-  for (const fmt of INPUT_FORMATS) {
+test("every component notation has three component labels and ranges", () => {
+  expect(COMPONENT_FORMATS).toEqual(["oklch", "rgb", "hsl"]);
+  for (const fmt of COMPONENT_FORMATS) {
     expect(COMP_LABELS[fmt]).toHaveLength(3);
     expect(COMP_RANGES[fmt]).toHaveLength(3);
   }
+});
+
+// clampNum — the wrap has to hold for any range, not just the 0..360 hues.
+
+test("clampNum wraps a range that does not start at zero", () => {
+  const r = { min: 10, max: 20, wrap: true };
+  expect(clampNum(12, r)).toBe(12);
+  expect(clampNum(20, r)).toBe(10);
+  expect(clampNum(23, r)).toBe(13);
+  expect(clampNum(8, r)).toBe(18);
+  expect(clampNum(-2, r)).toBe(18);
+});
+
+test("clampNum leaves an in-range hue bit-for-bit unchanged", () => {
+  const hue360 = { min: 0, max: 360, wrap: true };
+  for (const h of [0, 0.1, 237.3, 359.9999]) expect(clampNum(h, hue360)).toBe(h);
+  expect(clampNum(360, hue360)).toBe(0);
+  expect(clampNum(-90, hue360)).toBe(270);
+  expect(clampNum(450, hue360)).toBe(90);
 });
