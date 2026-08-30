@@ -20,6 +20,8 @@ This is a [bun](https://bun.sh) workspace monorepo.
   - `src/ansi.ts` — terminal swatch preview helper (exported at the `/ansi` subpath).
   - `src/index.ts` — public entry point.
   - `src/*.test.ts` — `bun test` suites.
+  - `scripts/reference-l.ts` — re-derives `REFERENCE_L` from Tailwind's
+    published palette; `ramp.test.ts` asserts the table still matches.
 - `packages/app` — `@shbernal/rampkit-cli`, the `rampkit` binary.
   - `src/main.ts` — entry; dispatches to CLI or TUI.
   - `src/cli.ts` — argument parsing, stdin/stdout handling; writes through a

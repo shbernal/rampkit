@@ -1,6 +1,7 @@
 import { test, expect } from "bun:test";
 import { rgb, oklch, inGamut } from "culori";
-import { ramp, rampColors, serializeRamp, STOPS } from "./ramp.js";
+import { ramp, rampColors, serializeRamp, REFERENCE_L, STOPS } from "./ramp.js";
+import { deriveReferenceL } from "../scripts/reference-l.js";
 import type { ColorSpace, Ramp } from "./ramp.js";
 
 const srgb = inGamut("rgb");
@@ -256,22 +257,18 @@ test("rampColors yields gamut-mapped oklch colors, not strings", () => {
 // promise, and rampColors is what makes the chosen stop observable.
 
 test("a stop's own reference lightness picks that stop", () => {
-  const REFERENCE_L: Record<number, number> = {
-    50: 0.971,
-    100: 0.936,
-    200: 0.885,
-    300: 0.808,
-    400: 0.704,
-    500: 0.637,
-    600: 0.577,
-    700: 0.505,
-    800: 0.443,
-    900: 0.391,
-    950: 0.262,
-  };
+  // Non-trivial despite reading the same table selection does: it only holds
+  // while the table stays monotonic and no two stops crowd each other out.
   for (const stop of STOPS) {
     expect(rampColors(`oklch(${REFERENCE_L[stop]} 0 0)`).anchor).toBe(stop);
   }
+});
+
+test("REFERENCE_L still matches what Tailwind's palette derives to", () => {
+  // The table is a summary of the installed Tailwind release, not a set of
+  // hand-tuned constants — so an upgrade that moves the palette should fail
+  // here and be re-derived, rather than leaving the comment above it stale.
+  expect(REFERENCE_L).toEqual(deriveReferenceL());
 });
 
 test("the anchor only ever moves darker as the input darkens", () => {

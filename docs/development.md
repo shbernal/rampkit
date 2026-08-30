@@ -9,6 +9,7 @@ rampkit is a [bun](https://bun.sh) workspace monorepo.
   - `src/format.ts` — output formatters.
   - `src/ansi.ts` — terminal swatch preview helper (exported at `/ansi`).
   - `src/index.ts` — public entry point.
+  - `scripts/reference-l.ts` — re-derives `REFERENCE_L` from Tailwind's palette.
 - `packages/app` — `@shbernal/rampkit-cli`, the `rampkit` binary.
   - `src/main.ts` — entry; dispatches to CLI or TUI.
   - `src/cli.ts` — argument parsing, stdin/stdout handling.
@@ -52,6 +53,22 @@ type derives from it, and the CLI and TUI menus read it. The `--help` text is
 generated from it too. Prose copies of the list are not, so a new format also
 needs a line in `docs/cli.md`, `docs/tui.md` and `packages/app/README.md`.
 Same shape for `COLOR_SPACES` in `packages/core/src/ramp.ts`.
+
+## Re-deriving the reference lightnesses
+
+`REFERENCE_L` in `packages/core/src/ramp.ts` decides which stop an input color is
+preserved at. It is a summary of Tailwind's own palette — the median OKLCH
+lightness of every default family at each stop — rather than a hand-tuned table,
+so it can be regenerated:
+
+```bash
+bun run --cwd packages/core scripts/reference-l.ts
+```
+
+`ramp.test.ts` asserts the checked-in table still equals what the script derives.
+Bumping the `tailwindcss` devDependency therefore fails the suite if the palette
+moved; paste the script's output back into `ramp.ts` and note the new version in
+the comment above it.
 
 ## Publishing
 

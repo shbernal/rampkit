@@ -61,20 +61,36 @@ function serialize(color: Color, options: Required<SerializeOptions>): string {
   }
 }
 
-/** Reference OKLCH lightness per stop, used to auto-pick the anchor. Approximates
- *  the Tailwind v4 default families so generated ramps sit naturally alongside them. */
-const REFERENCE_L: Record<Stop, number> = {
-  50: 0.971,
-  100: 0.936,
-  200: 0.885,
-  300: 0.808,
-  400: 0.704,
-  500: 0.637,
-  600: 0.577,
-  700: 0.505,
-  800: 0.443,
-  900: 0.391,
-  950: 0.262,
+/**
+ * Reference OKLCH lightness per stop, used to auto-pick the anchor, so a
+ * generated ramp sits alongside the Tailwind families without tracking their
+ * exact curve.
+ *
+ * The median lightness across all 26 Tailwind v4 default families at each stop,
+ * derived from `tailwindcss` 4.3.3. The families disagree far too much for one
+ * table to fit them all — yellow-500 sits at L 0.795, indigo-500 at 0.585 — so
+ * the choice of summary is settled by how often a table maps a Tailwind color
+ * back to the stop it came from: the median recovers 67.1% of them, a single
+ * family 57.7%, the mean 54.5%.
+ *
+ * Re-derive with `bun run scripts/reference-l.ts` in this package; `ramp.test.ts`
+ * asserts the two still agree, so a Tailwind upgrade that moves the palette
+ * fails the suite rather than drifting quietly.
+ *
+ * Not re-exported from `index.ts`: it explains a default, it is not API.
+ */
+export const REFERENCE_L: Record<Stop, number> = {
+  50: 0.984,
+  100: 0.958,
+  200: 0.919,
+  300: 0.865,
+  400: 0.716,
+  500: 0.632,
+  600: 0.568,
+  700: 0.498,
+  800: 0.435,
+  900: 0.381,
+  950: 0.266,
 };
 
 /** How a computed ramp is rendered into strings. */

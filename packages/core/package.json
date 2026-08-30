@@ -53,5 +53,8 @@
   },
   "dependencies": {
     "culori": "^4.0.2"
+  },
+  "devDependencies": {
+    "tailwindcss": "^4.3.3"
   }
 }
