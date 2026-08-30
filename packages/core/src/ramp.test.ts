@@ -72,6 +72,16 @@ test("throws on non-string input rather than returning an all-black ramp", () =>
   }
 });
 
+// An anchor matching no stop dropped the preserved-input promise silently: the
+// ramp came back well-formed with the input at no stop, and NaN made every stop
+// #000000.
+test("rejects an anchor that is not a stop", () => {
+  for (const anchor of [550, 0, 1000, -100, Number.NaN]) {
+    expect(() => ramp("#88c0d0", { anchor: anchor as never })).toThrow(/rampkit: anchor must be one of/);
+  }
+  for (const anchor of STOPS) expect(() => ramp("#88c0d0", { anchor })).not.toThrow();
+});
+
 test("accepts non-hex CSS color inputs", () => {
   expect(() => ramp("rebeccapurple")).not.toThrow();
   expect(() => ramp("oklch(0.7 0.15 250)")).not.toThrow();

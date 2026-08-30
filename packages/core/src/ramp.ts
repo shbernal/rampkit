@@ -132,7 +132,9 @@ export interface SerializeOptions {
 /** Everything {@link ramp} accepts: the ramp geometry plus how to render it. */
 export interface RampOptions extends SerializeOptions {
   /**
-   * Force the stop where the input color is preserved.
+   * Force the stop where the input color is preserved. Must be one of
+   * {@link STOPS}; anything else is rejected rather than quietly matching no
+   * stop.
    * @defaultValue the stop whose reference lightness is nearest the input's
    */
   anchor?: Stop;
@@ -228,9 +230,10 @@ const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
  * @param input - Any CSS color string (e.g. `"#451dc7"`, `"rebeccapurple"`, `"oklch(0.6 0.2 270)"`).
  * @param options - The geometry half of {@link RampOptions}; serialization options are ignored.
  * @returns A {@link RampResult}.
- * @throws If `input` is not a string or cannot be parsed as a color, if
- *   `lMin`/`lMax` are not finite numbers with `lMin < lMax`, or if
- *   `chroma`/`hueShift` are not finite (`chroma` must also be non-negative).
+ * @throws If `input` is not a string or cannot be parsed as a color, if `anchor`
+ *   is not one of {@link STOPS}, if `lMin`/`lMax` are not finite numbers with
+ *   `lMin < lMax`, or if `chroma`/`hueShift` are not finite (`chroma` must also
+ *   be non-negative).
  */
 export function rampColors(input: string, options: RampOptions = {}): RampResult {
   const base = parseColor(input);
@@ -260,6 +263,14 @@ export function rampColors(input: string, options: RampOptions = {}): RampResult
     throw new Error(`rampkit: chroma must be a finite number of at least 0, got ${chromaMul}`);
   }
   const anchor = options.anchor ?? nearestStop(baseL);
+  // `Stop` is a union, so an out-of-range anchor only arrives through a computed
+  // value, a JSON config or plain JS — the paths with no type to stop it. Left
+  // unchecked, `stop === anchor` simply never matches: the ramp comes back
+  // well-formed and eleven stops long with the input at none of them, and NaN
+  // takes every stop to #000000. Both look like ramps to everything downstream.
+  if (!(STOPS as readonly number[]).includes(anchor)) {
+    throw new Error(`rampkit: anchor must be one of ${STOPS.join(", ")}, got ${anchor}`);
+  }
 
   const colors = {} as Record<Stop, Color>;
   for (const stop of STOPS) {
@@ -319,9 +330,10 @@ export function serializeRamp(result: RampResult, options: SerializeOptions = {}
  * @param input - Any CSS color string (e.g. `"#451dc7"`, `"rebeccapurple"`, `"oklch(0.6 0.2 270)"`).
  * @param options - See {@link RampOptions}.
  * @returns A {@link Ramp}: `{ 50, 100, …, 950 }` mapping each stop to a color string.
- * @throws If `input` is not a string or cannot be parsed as a color, if
- *   `lMin`/`lMax` are not finite numbers with `lMin < lMax`, or if
- *   `chroma`/`hueShift` are not finite (`chroma` must also be non-negative).
+ * @throws If `input` is not a string or cannot be parsed as a color, if `anchor`
+ *   is not one of {@link STOPS}, if `lMin`/`lMax` are not finite numbers with
+ *   `lMin < lMax`, or if `chroma`/`hueShift` are not finite (`chroma` must also
+ *   be non-negative).
  *
  * @example Default ramp, preserving the input at its nearest stop
  * ```ts
