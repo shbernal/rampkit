@@ -14,8 +14,8 @@ import { spawn } from "node:child_process";
 import { render, Box, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { formatHex } from "culori";
-import { ramp, format, STOPS } from "@shbernal/rampkit";
-import type { Format, Ramp, ColorSpace } from "@shbernal/rampkit";
+import { ramp, format, STOPS, FORMATS, COLOR_SPACES } from "@shbernal/rampkit";
+import type { Ramp, ColorSpace } from "@shbernal/rampkit";
 import { readableText } from "@shbernal/rampkit/ansi";
 import {
   buildColor,
@@ -26,9 +26,6 @@ import {
   INPUT_FORMATS,
   type InputFormat,
 } from "./color-input";
-
-const FORMATS: Format[] = ["tailwind-v4", "css-vars", "tailwind-config", "json", "hex-array"];
-const COLOR_SPACES: ColorSpace[] = ["hex", "rgb", "hsl", "oklch"];
 
 /** Width, in characters, of each swatch's color block. */
 const BAR_WIDTH = 18;
@@ -143,7 +140,18 @@ function App({ initial }: { initial: string }) {
     }
   }, [colorStr, inputFormat, outSpace]);
 
-  const output = view.outScale ? format(view.outScale, outFormat, { name: name.trim() || undefined }) : "";
+  // The name field is edited a character at a time, so it passes through states
+  // format() rejects. Surface that like any other input error instead of
+  // tearing down the render.
+  let output = "";
+  let outputError = "";
+  if (view.outScale) {
+    try {
+      output = format(view.outScale, outFormat, { name: name.trim() || undefined });
+    } catch (err) {
+      outputError = err instanceof Error ? err.message : String(err);
+    }
+  }
 
   // Re-express the current color in the next/previous input notation.
   const cycleInputFormat = (dir: 1 | -1) => {
@@ -248,7 +256,7 @@ function App({ initial }: { initial: string }) {
           <TextInput value={name} onChange={setName} focus={nameFocused} placeholder="color" />
         </Box>
 
-        {view.error && <Text color="red">⚠ {view.error}</Text>}
+        {(view.error || outputError) && <Text color="red">⚠ {view.error || outputError}</Text>}
 
         {view.hexScale && view.labelScale && (
           <Box flexDirection="column">

@@ -28,8 +28,11 @@ export const STOPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as c
 export type Stop = (typeof STOPS)[number];
 export type Ramp = Record<Stop, string>;
 
+/** Every color syntax a ramp can be emitted in. */
+export const COLOR_SPACES = ["hex", "rgb", "hsl", "oklch"] as const;
+
 /** Color syntax used for each value in the ramp. */
-export type ColorSpace = "hex" | "rgb" | "hsl" | "oklch";
+export type ColorSpace = (typeof COLOR_SPACES)[number];
 
 /** Round to ~4 significant digits for readable oklch() output. */
 const sig = (n: number): number => Number(n.toPrecision(4));

@@ -3,7 +3,7 @@
 // Generate Tailwind-style color ramps (50–950) from a single input color,
 // preserving the exact input at its natural stop, with multi-format output.
 
-export { ramp, STOPS } from "./ramp.js";
+export { ramp, STOPS, COLOR_SPACES } from "./ramp.js";
 export type { Ramp, Stop, RampOptions, ColorSpace } from "./ramp.js";
-export { format } from "./format.js";
+export { format, FORMATS } from "./format.js";
 export type { Format, FormatOptions } from "./format.js";

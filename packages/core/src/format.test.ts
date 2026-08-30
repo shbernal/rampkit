@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
-import { ramp } from "./ramp.js";
-import { format } from "./format.js";
+import { ramp, STOPS } from "./ramp.js";
+import { format, FORMATS } from "./format.js";
 
 const scale = ramp("#451dc7");
 
@@ -39,4 +39,32 @@ test("hex-array emits hexes lightest→darkest", () => {
 
 test("defaults the token name to 'color'", () => {
   expect(format(scale, "css-vars")).toContain("--color-500:");
+});
+
+test("hex-array follows STOPS, not the ramp's own key order", () => {
+  // A ramp rebuilt darkest-first still has to come out lightest-first.
+  const reversed = Object.fromEntries(STOPS.toReversed().map((s) => [s, scale[s]]));
+  const arr = JSON.parse(format(reversed as typeof scale, "hex-array"));
+  expect(arr).toEqual(STOPS.map((s) => scale[s]));
+});
+
+test("rejects a token name that is not a CSS ident", () => {
+  for (const name of ["x: red; }", "bad name", "-leading", "9lives", "", "a}b"]) {
+    expect(() => format(scale, "css-vars", { name })).toThrow(/invalid token name/);
+  }
+  for (const name of ["brand", "_x", "a-b_9", "Color"]) {
+    expect(() => format(scale, "css-vars", { name })).not.toThrow();
+  }
+});
+
+test("throws on a ramp missing a stop", () => {
+  const { 500: _omitted, ...partial } = scale;
+  expect(() => format(partial as typeof scale, "json")).toThrow(/missing stop 500/);
+});
+
+test("FORMATS lists every target format() accepts", () => {
+  for (const target of FORMATS) {
+    expect(typeof format(scale, target)).toBe("string");
+  }
+  expect(FORMATS.length).toBe(5);
 });

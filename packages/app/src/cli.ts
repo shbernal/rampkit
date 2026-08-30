@@ -3,12 +3,12 @@
 // stays clean.
 
 import { parseArgs } from "node:util";
-import { ramp, format, STOPS } from "@shbernal/rampkit";
+import { ramp, format, STOPS, FORMATS, COLOR_SPACES } from "@shbernal/rampkit";
 import type { Format, RampOptions, Stop, ColorSpace } from "@shbernal/rampkit";
 import { swatches } from "@shbernal/rampkit/ansi";
 
-const FORMATS: Format[] = ["tailwind-v4", "css-vars", "tailwind-config", "json", "hex-array"];
-const COLOR_SPACES: ColorSpace[] = ["hex", "rgb", "hsl", "oklch"];
+const isFormat = (v: string): v is Format => (FORMATS as readonly string[]).includes(v);
+const isColorSpace = (v: string): v is ColorSpace => (COLOR_SPACES as readonly string[]).includes(v);
 
 const HELP = `rampkit — Tailwind-style color ramps from a single color
 
@@ -79,13 +79,13 @@ export async function runCli(argv: string[], version: string): Promise<void> {
   const color = positionals[0] ?? (!process.stdin.isTTY ? await readStdin() : "");
   if (!color) fail("no color provided (pass a color argument or pipe one via stdin)");
 
-  const target = (values.format ?? "tailwind-v4") as Format;
-  if (!FORMATS.includes(target)) {
+  const target = values.format ?? "tailwind-v4";
+  if (!isFormat(target)) {
     fail(`unknown format "${target}". Valid: ${FORMATS.join(", ")}`);
   }
 
-  const colorSpace = (values.color ?? "hex") as ColorSpace;
-  if (!COLOR_SPACES.includes(colorSpace)) {
+  const colorSpace = values.color ?? "hex";
+  if (!isColorSpace(colorSpace)) {
     fail(`unknown color space "${colorSpace}". Valid: ${COLOR_SPACES.join(", ")}`);
   }
 
@@ -118,6 +118,13 @@ export async function runCli(argv: string[], version: string): Promise<void> {
     fail(err instanceof Error ? err.message : String(err));
   }
 
-  process.stdout.write(format(scale, target, { name: values.name }) + "\n");
+  let output;
+  try {
+    output = format(scale, target, { name: values.name });
+  } catch (err) {
+    fail(err instanceof Error ? err.message : String(err));
+  }
+
+  process.stdout.write(output + "\n");
   if (values.preview) process.stderr.write("\n" + swatches(scale) + "\n");
 }

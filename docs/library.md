@@ -47,7 +47,16 @@ format(scale, "hex-array"); // ["#...", ...] lightest→darkest
 ```
 
 Pass `{ name }` in options to set the token name used in the emitted output
-(e.g. `--color-brand-500`).
+(e.g. `--color-brand-500`). It must be a CSS ident — a letter or underscore
+followed by letters, digits, `-` or `_` — since it is spliced straight into the
+emitted properties and keys; anything else throws.
+
+`FORMATS` and `COLOR_SPACES` are exported alongside `STOPS` for building menus
+and validating input:
+
+```ts
+import { FORMATS, COLOR_SPACES, STOPS } from "@shbernal/rampkit";
+```
 
 ## Terminal preview — `@shbernal/rampkit/ansi`
 
