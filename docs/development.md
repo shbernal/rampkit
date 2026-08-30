@@ -14,6 +14,8 @@ rampkit is a [bun](https://bun.sh) workspace monorepo.
   - `src/cli.ts` — argument parsing, stdin/stdout handling.
   - `src/tui.tsx` — interactive [Ink](https://github.com/vadimdemedes/ink) TUI.
   - `src/color-input.ts` — pure input-pane logic (notation conversion, clamping).
+  - `src/version.ts` — the `--version` string; see _Versioning_ below.
+  - `scripts/build.ts` — the bundler invocation behind `bun run build`.
 
 ## Commands
 
@@ -64,7 +66,7 @@ exists on the registry:
 ```bash
 # 1. bump versions in lockstep:
 #    packages/core/package.json, packages/app/package.json
-#    (the CLI reads its own manifest, so --version follows automatically)
+#    (the build reads the app's manifest, so --version follows automatically)
 bun publish --cwd packages/core   # @shbernal/rampkit
 bun publish --cwd packages/app    # @shbernal/rampkit-cli
 ```
@@ -73,6 +75,17 @@ Each package's `prepublishOnly` runs `bun run build` first, so `dist/` (which is
 git-ignored) is always freshly built before it ships. The app bundles all its
 runtime deps (culori, ink, react, the core lib) into `dist/`, so they live in
 `devDependencies` and nothing extra is pulled in on `npm i -g @shbernal/rampkit-cli`.
+
+## Versioning
+
+`rampkit --version` prints the app's `package.json` version; bumping the manifest
+is the only step. How it gets there differs by how the code is running, because
+importing the manifest would inline the _whole_ thing into the bundle:
+
+- built (`bun run build`) — `scripts/build.ts` substitutes the version for the
+  `RAMPKIT_VERSION` identifier, so only the string ships;
+- from source (`bun run dev`) — no substitution happened, so `src/version.ts`
+  falls back to reading `package.json` off disk.
 
 ## Regenerating the demo
 

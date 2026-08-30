@@ -28,6 +28,9 @@ This is a [bun](https://bun.sh) workspace monorepo.
   - `src/tui.tsx` — interactive [Ink](https://github.com/vadimdemedes/ink) React TUI.
   - `src/color-input.ts` — pure logic for the TUI input pane (notation
     conversion, range clamping); unit-tested in `src/color-input.test.ts`.
+  - `src/version.ts` — the `--version` string, substituted at build time so
+    the manifest is not inlined into the bundle.
+  - `scripts/build.ts` — the bundler invocation behind `bun run build`.
   - `scripts/tui-smoke.py` — manual pty-driven TUI smoke check (not in `bun test`).
 
 ## Commands

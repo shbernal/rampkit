@@ -2,8 +2,8 @@
 // the TUI launches only when invoked bare in an interactive terminal (no args,
 // stdin and stdout both TTYs). Any arguments, or piped stdin/stdout, run the CLI.
 
-import pkg from "../package.json" with { type: "json" };
 import { fail } from "./fail.js";
+import { resolveVersion } from "./version.js";
 
 async function main() {
   const argv = process.argv.slice(2);
@@ -16,7 +16,7 @@ async function main() {
   }
 
   const { runCli, processIo } = await import("./cli.js");
-  process.exitCode = await runCli(argv, pkg.version, processIo);
+  process.exitCode = await runCli(argv, resolveVersion(), processIo);
 }
 
 main().catch(fail);

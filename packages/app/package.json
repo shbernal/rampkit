@@ -25,7 +25,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "rm -rf dist && bun build src/main.ts --target=node --format esm --splitting --outdir dist --external react-devtools-core --banner '#!/usr/bin/env node' && chmod +x dist/main.js",
+    "build": "bun run scripts/build.ts",
     "dev": "bun run src/main.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
     "prepublishOnly": "bun run build"
