@@ -19,6 +19,7 @@ import {
 import type { Format, RampOptions, Stop, ColorSpace } from "@shbernal/rampkit";
 import { swatches } from "@shbernal/rampkit/ansi";
 import { errorLine } from "./fail.js";
+import { NUMERIC } from "./ramp-options.js";
 
 const isFormat = (v: string): v is Format => (FORMATS as readonly string[]).includes(v);
 const isColorSpace = (v: string): v is ColorSpace => (COLOR_SPACES as readonly string[]).includes(v);
@@ -84,11 +85,8 @@ export const OPTIONS = {
 } as const;
 
 // Number() alone is too permissive: it reads "" and "  " as 0, and lets Infinity
-// through to the ramp engine. The bounds below are the CLI's own guardrails —
-// deliberately tighter than core, which accepts any finite chroma and any finite
-// lMin < lMax — so a typo like `-c 500` is a flag error rather than a ramp that
-// silently clamps to the sRGB boundary at every stop. A flag with no useful
-// bound (hue drift wraps) passes none.
+// through to the ramp engine. The bounds come from NUMERIC (see ramp-options.ts,
+// which explains why they are tighter than core's).
 function num(key: string, raw: string | undefined, min?: number, max?: number): number | undefined {
   if (raw === undefined) return undefined;
   if (raw.trim() === "") fail(`--${key} requires a number`);
@@ -99,20 +97,6 @@ function num(key: string, raw: string | undefined, min?: number, max?: number): 
   }
   return n;
 }
-
-/** The numeric geometry flags: the option each one sets and the range it accepts. */
-interface NumericFlag {
-  flag: "chroma" | "hue-shift" | "lmin" | "lmax";
-  key: "chroma" | "hueShift" | "lMin" | "lMax";
-  min?: number;
-  max?: number;
-}
-const NUMERIC: readonly NumericFlag[] = [
-  { flag: "chroma", key: "chroma", min: 0, max: 10 },
-  { flag: "hue-shift", key: "hueShift" },
-  { flag: "lmin", key: "lMin", min: 0, max: 1 },
-  { flag: "lmax", key: "lMax", min: 0, max: 1 },
-];
 
 /** The real process streams, used by the entry point. */
 export const processIo: CliIo = {
