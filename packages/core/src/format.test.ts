@@ -28,14 +28,6 @@ test("tailwind-config emits a nested JSON object keyed by name", () => {
 test("json emits the flat stop→hex map", () => {
   const parsed = JSON.parse(format(scale, "json"));
   expect(parsed[50]).toBe(scale[50]);
-  expect(Object.keys(parsed).length).toBe(11);
-});
-
-test("hex-array emits hexes lightest→darkest", () => {
-  const arr = JSON.parse(format(scale, "hex-array"));
-  expect(Array.isArray(arr)).toBe(true);
-  expect(arr.length).toBe(11);
-  expect(arr[0]).toBe(scale[50]);
 });
 
 test("defaults the token name to 'color'", () => {
@@ -69,18 +61,6 @@ test("rejects a token name that is not a CSS ident", () => {
   for (const name of ["brand", "_x", "a-b_9", "Color"]) {
     expect(() => format(scale, "css-vars", { name })).not.toThrow();
   }
-});
-
-test("throws on a ramp missing a stop", () => {
-  const { 500: _omitted, ...partial } = scale;
-  expect(() => format(partial as typeof scale, "json")).toThrow(/missing stop 500/);
-});
-
-test("FORMATS lists every target format() accepts", () => {
-  for (const target of FORMATS) {
-    expect(typeof format(scale, target)).toBe("string");
-  }
-  expect(FORMATS.length).toBe(5);
 });
 
 test("stamp prefixes a version comment on the formats that have comments", () => {

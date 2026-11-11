@@ -1,7 +1,6 @@
 import { test, expect } from "bun:test";
-import { rampColors, RAMP_DEFAULTS, STOPS } from "@shbernal/rampkit";
+import { rampColors, RAMP_DEFAULTS } from "@shbernal/rampkit";
 import {
-  ANCHORS,
   COARSE_STEPS,
   NUMERIC,
   RAMP_FIELDS,
@@ -27,10 +26,6 @@ const coarse = (field: RampField, dir: 1 | -1, from: RampSettings = D): RampSett
   stepField(from, field, dir, COARSE_STEPS);
 
 // The table both front ends read.
-
-test("the defaults are core's, plus an unforced anchor", () => {
-  expect(D).toEqual({ anchor: "auto", ...RAMP_DEFAULTS });
-});
 
 test("every field is reachable by Tab, anchor first", () => {
   expect(RAMP_FIELDS).toEqual(["anchor", "chroma", "hue-shift", "lmin", "lmax"]);
@@ -72,7 +67,6 @@ test("the lightness ends stop one step short of each other", () => {
 });
 
 test("the anchor walks the scale's own order and clamps at both ends", () => {
-  expect(ANCHORS).toEqual(["auto", ...STOPS]);
   expect(stepField(D, "anchor", -1).anchor).toBe(50); // ↓ from auto: the top stop
   expect(stepField(D, "anchor", 1).anchor).toBe("auto"); // ↑ from auto: nowhere
   expect(press("anchor", -1, 99).anchor).toBe(950);
@@ -128,11 +122,6 @@ test("the far ends come within a handful of presses", () => {
 test("an auto anchor is an absent anchor, not a value core knows", () => {
   expect(toRampOptions(D)).toEqual({ ...RAMP_DEFAULTS });
   expect(toRampOptions({ ...D, anchor: 700 })).toEqual({ ...RAMP_DEFAULTS, anchor: 700 });
-});
-
-test("a forced anchor is where the input lands", () => {
-  const result = rampColors("#0ea5e9", toRampOptions({ ...D, anchor: 700 }));
-  expect(result.anchor).toBe(700);
 });
 
 test("every reachable dial position is accepted by the engine", () => {

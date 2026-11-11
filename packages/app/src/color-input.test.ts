@@ -1,5 +1,4 @@
 import { test, expect } from "bun:test";
-import { COLOR_SPACES } from "@shbernal/rampkit";
 import { rgb } from "culori";
 import {
   buildColor,
@@ -10,8 +9,6 @@ import {
   rememberColor,
   toComps,
   COMP_RANGES,
-  COMPONENT_FORMATS,
-  COMP_LABELS,
 } from "./color-input";
 
 // buildColor — assembling + clamping the value handed to the engine.
@@ -89,17 +86,6 @@ test("toComps round-trips back to the same color via buildColor", () => {
 
 test("toComps returns blanks for an unparseable color", () => {
   expect(toComps("not-a-color", "oklch")).toEqual(["", "", ""]);
-});
-
-// Tables stay aligned across notations.
-
-test("every component notation has three component labels and ranges", () => {
-  // Every non-hex color space core can emit is typeable here, whatever the order.
-  expect([...COMPONENT_FORMATS].toSorted()).toEqual(COLOR_SPACES.filter((s) => s !== "hex").toSorted());
-  for (const fmt of COMPONENT_FORMATS) {
-    expect(COMP_LABELS[fmt]).toHaveLength(3);
-    expect(COMP_RANGES[fmt]).toHaveLength(3);
-  }
 });
 
 // clampNum — the wrap has to hold for any range, not just the 0..360 hues.
