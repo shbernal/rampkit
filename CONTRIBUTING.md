@@ -138,27 +138,27 @@ than shipping a ramp that lies about what made it.
 
 ## Publishing
 
-Both packages go out with `bun publish`, not `npm publish`. The app depends on
-`@shbernal/rampkit` as `workspace:*`, and `bun publish` rewrites that to the
-concrete version. `npm publish` would ship the literal `workspace:*` and break
-every install.
-
-Release the library first so the CLI's resolved version already exists on the
-registry:
+Releases go out from `.github/workflows/publish.yml` on a `v<version>` tag, with
+npm trusted publishing and provenance: there is no token, npm trusts that
+workflow file in this repository. Do not publish by hand.
 
 ```bash
-# 1. bump versions in lockstep:
+# 1. in a PR, bump versions in lockstep:
 #    packages/core/package.json, packages/app/package.json
 #    packages/core/src/version.ts, the VERSION format() stamps into output
 #    (the build reads the app's manifest, so --version follows automatically)
-bun publish --cwd packages/core   # @shbernal/rampkit
-bun publish --cwd packages/app    # @shbernal/rampkit-cli
+# 2. once it is merged, tag main and push the tag:
+git tag v1.2.3 && git push origin v1.2.3
 ```
 
-Each package's `prepublishOnly` runs `bun run build`, so the git-ignored `dist/`
-is always freshly built before it ships. The app bundles its runtime deps
-(culori, ink, react, the core library) into `dist/`, which is why they sit in
-`devDependencies` and why a global install pulls nothing else down.
+The workflow refuses a tag that disagrees with either manifest, runs typecheck,
+tests and build, then publishes the library first, so the CLI's resolved version
+already exists on the registry. Each package is packed with `bun pm pack`, which
+rewrites the app's `workspace:*` dependency on the library to the concrete
+version (`npm pack` would ship the literal), and the tarball is published with
+`npm publish`, which is what does trusted publishing. The app bundles its
+runtime deps (culori, ink, react, the core library) into `dist/`, which is why
+they sit in `devDependencies` and why a global install pulls nothing else down.
 
 ## Regenerating the demo
 

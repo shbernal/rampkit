@@ -39,7 +39,7 @@
     "directory": "packages/app"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "devDependencies": {
     "@shbernal/rampkit": "workspace:*",

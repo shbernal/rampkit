@@ -1,0 +1,47 @@
+name: Publish
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing and provenance
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2 # bun version from package.json packageManager
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+          registry-url: https://registry.npmjs.org
+
+      - run: bun install --frozen-lockfile
+
+      - name: the tag matches both manifests # version.test.ts holds the core VERSION literal to its manifest
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          for pkg in packages/core packages/app; do
+            v="$(node -p "require('./$pkg/package.json').version")"
+            test "$tag" = "$v" || { echo "tag $tag != $pkg $v"; exit 1; }
+          done
+
+      - run: bun run typecheck
+      - run: bun test
+      - run: bun run build
+
+      # bun packs (it rewrites the app's `workspace:*` to the concrete version), npm
+      # publishes: trusted publishing and the provenance attestation are npm's. That
+      # needs npm 11.5.1 or newer. Core first, so the CLI's version of it exists.
+      - run: npm install -g npm@latest
+      - name: publish @shbernal/rampkit, then @shbernal/rampkit-cli
+        run: |
+          for pkg in packages/core packages/app; do
+            (cd "$pkg" && bun pm pack --ignore-scripts --filename "$RUNNER_TEMP/$(basename "$pkg").tgz" --quiet)
+            npm publish "$RUNNER_TEMP/$(basename "$pkg").tgz" --access public --provenance
+          done
