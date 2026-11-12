@@ -44,7 +44,7 @@
   "devDependencies": {
     "@shbernal/rampkit": "workspace:*",
     "culori": "^4.0.2",
-    "ink": "^7.1.1",
+    "ink": "^8.0.0",
     "ink-text-input": "^6.0.0",
     "react": "^19.3.1"
   }
