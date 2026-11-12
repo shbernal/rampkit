@@ -153,8 +153,11 @@ function copyToClipboard(text: string): Promise<void> {
  *  there is no size to be had: stdout is not a TTY, or it is one that never had
  *  its window size set — a bare pty reports 0×0, which is an unknown size and
  *  not a terminal with no room in it. */
-function terminalSize(stdout: NodeJS.WriteStream | undefined): { rows?: number; columns?: number } {
-  return { rows: stdout?.rows || undefined, columns: stdout?.columns || undefined };
+function terminalSize(stdout: NodeJS.WritableStream | undefined): { rows?: number; columns?: number } {
+  // Ink types stdout as a plain stream; the size lives on the TTY subclass. Ink's own
+  // useWindowSize is not used because it reports an unknown size as 80×24.
+  const tty = stdout as Partial<Pick<NodeJS.WriteStream, "rows" | "columns">> | undefined;
+  return { rows: tty?.rows || undefined, columns: tty?.columns || undefined };
 }
 
 function useTerminalSize(): { rows?: number; columns?: number } {
