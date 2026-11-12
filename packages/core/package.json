@@ -1,6 +1,6 @@
 {
   "name": "@shbernal/rampkit",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Generate Tailwind-style color ramps (50–950) from a single color, with multi-format output.",
   "type": "module",
   "license": "MIT",
