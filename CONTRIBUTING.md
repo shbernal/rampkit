@@ -3,8 +3,8 @@
 Issues and pull requests are welcome, including ones written entirely by an AI
 agent. The only rule about that is disclosure: say in the issue or PR body which
 harness and model produced it (for example "Claude Code, Opus 5"). Commit
-messages are the exception, they carry no AI attribution at all and a shared
-lefthook rule rejects them if they do.
+messages are the exception, they carry no AI attribution at all and the
+`commit-check` CI job rejects them if they do.
 
 ## Setup
 
@@ -12,7 +12,7 @@ rampkit is a [bun](https://bun.sh) workspace monorepo. Everything runs from the
 repo root.
 
 ```bash
-bun install        # also installs the git hooks
+bun install
 bun run build      # tsc build for the library, bundled binary for the app
 bun test           # unit suites
 bun run typecheck  # tsc --noEmit across packages, sources and suites alike
@@ -21,10 +21,9 @@ bun run format     # oxfmt across the repo (format:check verifies without rewrit
 bun run lint       # oxlint (correctness, suspicious, perf)
 ```
 
-`bun install` runs `lefthook install`. From then on a commit formats and lints
-the staged files and typechecks the workspace, and a push runs the suites. Use
-`--no-verify` when you need to get out of the way of a hook, then fix it before
-the PR.
+There are no git hooks. CI (`.github/workflows/ci.yml`) runs typecheck, lint,
+format check, tests and build on every pull request, plus the commit-message
+check; run them locally before pushing.
 
 ## Layout
 
