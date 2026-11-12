@@ -61,22 +61,25 @@ const sig = (n: number): number => Number(n.toPrecision(4));
  * `hexCase` shape the `"hex"` space only; other spaces ignore them.
  */
 function serialize(color: Color, options: Required<SerializeOptions>): string {
+  // culori formats a color it cannot read as nothing, and one with NaN channels as
+  // black. Either would be a well-formed wrong ramp, so refuse it here.
+  const c = oklch(color);
+  if (c === undefined || !Number.isFinite(c.l) || !Number.isFinite(c.c)) {
+    throw new Error(`rampkit: cannot serialize ${JSON.stringify(color)} as a color`);
+  }
   switch (options.colorSpace) {
     case "hex": {
-      let hex = formatHex(color) ?? "#000000";
+      let hex = formatHex(color) as string;
       if (options.hexCase === "upper") hex = hex.toUpperCase();
       if (!options.hexHash) hex = hex.replace(/^#/, "");
       return hex;
     }
     case "rgb":
-      return formatRgb(color) ?? "rgb(0 0 0)";
+      return formatRgb(color) as string;
     case "hsl":
-      return formatHsl(color) ?? "hsl(0 0% 0%)";
-    case "oklch": {
-      const c = oklch(color);
-      if (!c) return "oklch(0 0 0)";
+      return formatHsl(color) as string;
+    case "oklch":
       return `oklch(${sig(c.l)} ${sig(c.c)} ${sig(c.h ?? 0)})`;
-    }
   }
 }
 

@@ -362,3 +362,13 @@ test("guards a pinned end's own input the way it guards the color", () => {
   expect(() => ramp("#4c566a", { light: "not-a-color" })).toThrow(/could not parse light color/);
   expect(() => ramp("#4c566a", { dark: 5 as never })).toThrow(/expected a dark color string/);
 });
+
+test("serializeRamp rejects a color it cannot read, rather than emitting black", () => {
+  const { colors } = rampColors("#0ea5e9");
+  for (const bad of ["not-a-color", { mode: "oklch", l: Number.NaN, c: 0, h: 0 }]) {
+    const result = { anchor: 500 as const, colors: { ...colors, 500: bad as (typeof colors)[500] } };
+    for (const space of SPACES) {
+      expect(() => serializeRamp(result, { colorSpace: space })).toThrow(/rampkit: cannot serialize/);
+    }
+  }
+});
